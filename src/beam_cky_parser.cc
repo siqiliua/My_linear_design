@@ -44,7 +44,7 @@ double BeamCKYParser<ScoreType, IndexType, NodeType>::get_broken_codon_score(
     if (t_index / 3 < protein.size()){
         aa_right = protein[(int)(t_index / 3)];
     }
-        
+
     auto start_node_re_index = make_tuple(s_index % 3+1, std::get<1>(start_node), std::get<2>(start_node));
     auto end_node_re_index = make_tuple(t_index % 3+1, std::get<1>(end_node), std::get<2>(end_node));
 
@@ -85,13 +85,11 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::hairpin_beam(IndexType j, DF
             continue;
     }
 
-    std::cout  << j << "," << j_num <<  "--------------" << std::endl;
-
     auto j_node = make_tuple(j,j_num,nuc_j);
 
-    std::cout << "H-----------" << std::endl;
+    //std::cout  << j << "," << j_num << "," << GET_ACGU(nuc_j) << "--------------" << std::endl;
+    //std::cout << "H-----------" << std::endl;
     for (auto &j1_node_nucj : dfa.right_edges[j_node]) { // right_edges[j][j_num][j1_num][nuc]: false/true
-        
         auto j1_node = std::get<0>(j1_node_nucj);
         auto nucj = std::get<2>(j_node);
         auto weight_nucj = std::get<1>(j1_node_nucj);
@@ -114,18 +112,17 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::hairpin_beam(IndexType j, DF
                 NodeNucpair temp = {j, j_num, static_cast<NucPairType>(NTP(nucj, nucjnext))};
 
 
-// #ifdef SPECIAL_HP
-//                 if (hairpin_length == 5 or hairpin_length == 6 or hairpin_length == 8){
-//                     for(auto & seq_score_weight : hairpin_seq_score_cai[j_node][jnext_node][NTP(nucj, nucjnext)]){
-//                             auto seq =  get<0>(seq_score_weight);
-//                             auto pre_cal_score =  get<1>(seq_score_weight);
-//                             auto pre_cal_cai_score = get<2>(seq_score_weight);
-//                             update_if_better(bestH[jnext_node][temp], pre_cal_score, pre_cal_cai_score);
-//                     }
-
-//                     continue;
-//                 }
-// #endif
+#ifdef SPECIAL_HP
+                if (hairpin_length == 5 or hairpin_length == 6 or hairpin_length == 8){
+                    for(auto & seq_score_weight : hairpin_seq_score_cai[j_node][jnext_node][NTP(nucj, nucjnext)]){
+                            auto seq =  get<0>(seq_score_weight);
+                            auto pre_cal_score =  get<1>(seq_score_weight);
+                            auto pre_cal_cai_score = get<2>(seq_score_weight);
+                            update_if_better(bestH[jnext_node][temp], pre_cal_score, pre_cal_cai_score);
+                    }
+                    continue;
+                }
+#endif
 
                 for (auto &j2_node_nucj1 : dfa.right_edges[j1_node]) {
                     auto j2_node = std::get<0>(j2_node_nucj1);
@@ -150,11 +147,9 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::hairpin_beam(IndexType j, DF
                                 auto weight_nucjnext_1 = get<1>(jnext_1_node_list);
 
                                 auto newscore = - func12(j, jnext, nucj, nucj1, nucjnext_1, nucjnext, tetra_hex_tri);
-                                //std::cout << newscore << std::endl;
-                            
+                                
                                 FinalScoreType cai_score =  weight_nucj + weight_nucj1 + weight_nucjnext_1 + weight_nucjnext; //ZL need to add weight_nucjnext
-                                //std::cout << cai_score << std::endl;
-
+                                
                                 if ((std::get<0>(jnext_1_node) - std::get<0>(j2_node)) <= SINGLE_MAX_LEN)
                                     cai_score += get_broken_codon_score_map[j2_node][jnext_1_node];
                                 else
@@ -162,16 +157,19 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::hairpin_beam(IndexType j, DF
 
                                 update_if_better(bestH[jnext_node][temp], newscore, cai_score); 
                                 
-                                // IndexType index;
-                                // NumType num;
-                                // NucType nuc;
-                                // std::tie(index,num,nuc) = jnext_node;
-                                // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
-                                // std::cout << j << "," << j_num  << "," << GET_ACGU(nucj) << "," << GET_ACGU(nucjnext) << std::endl;
-                                // std::cout << bestH[jnext_node][temp].score << std::endl;
-                                // std::cout << bestH[jnext_node][temp].cai_score << std::endl;
-                                // std::cout << "-------------"  << std::endl;
-
+                                
+                                //     IndexType index;
+                                //     NumType num;
+                                //     NucType nuc;
+                                //     std::tie(index,num,nuc) = jnext_node;
+                                //     if(index==57){
+                                //         std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
+                                //         std::cout << j << "," << j_num  << "," << GET_ACGU(nucj) << "," << GET_ACGU(nucjnext) << std::endl;
+                                //         std::cout << bestH[jnext_node][temp].score << std::endl;
+                                //         std::cout << bestH[jnext_node][temp].cai_score << std::endl;
+                                //         std::cout << "-------------"  << std::endl;
+                                //     }                                
+                                
                             }
                         }                            
 
@@ -186,10 +184,8 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::hairpin_beam(IndexType j, DF
     //    1. extend h(i, j) to h(i, jnext)
     //    2. generate p(i, j)
     for (size_t i_node_nucpair_ = 0; i_node_nucpair_ < 64 * j; ++i_node_nucpair_) {
-
         if (bestH[j_node][i_node_nucpair_].score == util::value_min<ScoreType>())
             continue;
-
         auto i_node_nucpair = reverse_index(i_node_nucpair_);
         
         auto i = i_node_nucpair.node_first;
@@ -201,7 +197,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::hairpin_beam(IndexType j, DF
 
         auto i_node = make_tuple(i,i_num,nuci);
 
-        std::cout << "H(i,j)->H(i,jnext)-----"  << std::endl;
+        //std::cout << "H(i,j)->H(i,jnext)-----"  << std::endl;
         for (const auto& item : dfa.auxiliary_right_edges[j_node]){
             auto j1_node = item.first;
             auto jnext_list = next_pair[nuci][j1_node];
@@ -234,7 +230,6 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::hairpin_beam(IndexType j, DF
                     if (nuci != newnuci) continue;
                     NodeType i1_node = get<0>(i1_node_newnuci);
                     double weight_newnuci = get<1>(i1_node_newnuci);
-
 
                     for (auto &i2_node_nuci1 : dfa.right_edges[i1_node]) {
                         auto i2_node = get<0>(i2_node_nuci1);
@@ -273,7 +268,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::hairpin_beam(IndexType j, DF
             }
         }
 
-        std::cout << "H->P-------------"  << std::endl; 
+        //std::cout << "H->P-------------"  << std::endl; 
         auto& state = bestH[j_node][i_node_nucpair_];
         for (auto &j1_node_newnucj : dfa.right_edges[j_node]){
             NucType newnucj = get<2>(j_node);
@@ -281,15 +276,16 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::hairpin_beam(IndexType j, DF
             NodeType j1_node = get<0>(j1_node_newnucj);
             update_if_better(bestP[j1_node][i_node_nucpair_], state.score, state.cai_score);
 
-            IndexType index;
-            NumType num;
-            NucType nuc;
-            std::tie(index,num,nuc) = j1_node;
-            std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
-            std::cout << i << "," << i_num << "," <<  pair_nuc << "," << GET_ACGU(nuci) << "," << GET_ACGU(nucj) << std::endl;
-            std::cout << bestP[j1_node][i_node_nucpair_].score << std::endl;
-            std::cout << bestP[j1_node][i_node_nucpair_].cai_score << std::endl;
-            std::cout << "-------------"  << std::endl;            
+            //std::cout << i_node_nucpair_ << std::endl;
+            // IndexType index;
+            // NumType num;
+            // NucType nuc;
+            // std::tie(index,num,nuc) = j1_node;
+            // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
+            // std::cout << i << "," << i_num << "," << GET_ACGU(nuci) << "," << GET_ACGU(nucj) << std::endl;
+            // std::cout << bestP[j1_node][i_node_nucpair_].score << std::endl;
+            // std::cout << bestP[j1_node][i_node_nucpair_].cai_score << std::endl;
+            // std::cout << "-------------"  << std::endl;            
         }
     }
 }
@@ -302,7 +298,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::Multi_beam(IndexType j, DFA_
     for (auto &j_at_node : dfa.nodes[j]){
         IndexType j_at_num = get<1>(j_at_node);
         if (j_num == j_at_num){
-            auto nuc_j=get<2>(j_at_node);
+            nuc_j=get<2>(j_at_node);
             break;
         }else 
             continue;
@@ -311,8 +307,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::Multi_beam(IndexType j, DFA_
     auto j_node = make_tuple(j,j_num,nuc_j);
     //NodeType j_node = make_pair(j, j_num);
 
-    //std::cout  << j << "," << j_num <<  "-----" << std::endl;
-    //std::cout << "multi(i,j)->jnext------------" << std::endl;
+    //std::cout  << j << "," << j_num <<  "," << GET_ACGU(nuc_j) << "-----" << std::endl;
     for (size_t i_node_nucpair_ = 0; i_node_nucpair_ < 64 * j; ++i_node_nucpair_){
         auto& new_state_score = bestMulti[j_node][i_node_nucpair_];
         if (new_state_score.score == util::value_min<ScoreType>())
@@ -327,6 +322,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::Multi_beam(IndexType j, DFA_
 
         auto& jnext_list = next_pair[nuci][j_node];
 
+        //std::cout << "multi(i,j)->jnext------------" << std::endl;
         if (!jnext_list.empty()){
             for (auto &jnext_node_nucjnext : jnext_list){
                 auto jnext_node = std::get<0>(jnext_node_nucjnext);
@@ -349,35 +345,35 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::Multi_beam(IndexType j, DFA_
 
                         update_if_better(bestMulti[jnext1_node][temp], new_state_score.score, cai_score, new_state_score.pre_node, new_state_score.pre_left_cai);
                         
-                        IndexType index;
-                        NumType num;
-                        NucType nuc;
-                        std::tie(index,num,nuc) = jnext1_node;
-                        std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
-                        std::cout << i << "," << i_num  << "," << GET_ACGU(nuci) << "," << GET_ACGU(nucjnext) << std::endl;
-                        std::cout << bestH[jnext_node][temp].score << std::endl;
-                        std::cout << bestH[jnext_node][temp].cai_score << std::endl;
-                        std::cout << "-------------"  << std::endl;
+                        // IndexType index;
+                        // NumType num;
+                        // NucType nuc;
+                        // std::tie(index,num,nuc) = jnext1_node;
+                        // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
+                        // std::cout << i << "," << i_num  << "," << GET_ACGU(nuci) << "," << GET_ACGU(nucjnext) << std::endl;
+                        // std::cout << bestMulti[jnext_node][temp].score << std::endl;
+                        // std::cout << bestMulti[jnext_node][temp].cai_score << std::endl;
+                        // std::cout << "-------------"  << std::endl;
 
                     }
                 }
             }
         }
-        
+       
         //  2. generate multi(i, j) -> p(i, j)
         //std::cout << "multi->p------------" << std::endl;
         auto newscore = new_state_score.score - func15(i, j, nuci, -1, -1, nucj_1, seq_length); // hzhang: TODO
         update_if_better(bestP[j_node][i_node_nucpair_], newscore, new_state_score.cai_score);
 
-        IndexType index;
-        NumType num;
-        NucType nuc;
-        std::tie(index,num,nuc) = j_node;
-        std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
-        std::cout << i << "," << i_num << "," <<  pair_nuc << "," << GET_ACGU(nuci) << "," << GET_ACGU(nucj_1) << std::endl;
-        std::cout << bestP[j_node][i_node_nucpair_].score << std::endl;
-        std::cout << bestP[j_node][i_node_nucpair_].cai_score << std::endl;
-        std::cout << "-------------"  << std::endl;
+        // IndexType index;
+        // NumType num;
+        // NucType nuc;
+        // std::tie(index,num,nuc) = j_node;
+        // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
+        // std::cout << i << "," << i_num << "," <<  pair_nuc << "," << GET_ACGU(nuci) << "," << GET_ACGU(nucj_1) << std::endl;
+        // std::cout << bestP[j_node][i_node_nucpair_].score << std::endl;
+        // std::cout << bestP[j_node][i_node_nucpair_].cai_score << std::endl;
+        // std::cout << "-------------"  << std::endl;
     }
 }
 
@@ -388,7 +384,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
     for (auto &j_at_node : dfa.nodes[j]){
         IndexType j_at_num = get<1>(j_at_node);
         if (j_num == j_at_num){
-            auto nuc_j=get<2>(j_at_node);
+            nuc_j=get<2>(j_at_node);
             break;
         }else 
             continue;
@@ -397,13 +393,13 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
     auto j_node = make_tuple(j,j_num,nuc_j);
     //auto j_node = make_pair(j, j_num);
 
-    std::cout  << j << "," << j_num <<  "------------------" << std::endl;
+    //std::cout  << j << j_num << "," << GET_ACGU(nuc_j) <<  "------------------" << std::endl;
     if (j < seq_length){
         for (size_t i_node_nucpair_ = 0; i_node_nucpair_ < 64 * j; ++i_node_nucpair_){
             auto& state = bestP[j_node][i_node_nucpair_];
-            if (state.score == util::value_min<ScoreType>())
+            if (bestP[j_node][i_node_nucpair_].score == util::value_min<ScoreType>())
                 continue;
-            std::cout  <<  "hasp--------" << std::endl;
+
             auto i_node_nucpair = reverse_index(i_node_nucpair_);
             auto i = i_node_nucpair.node_first;
             
@@ -415,7 +411,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
             auto i_node = make_tuple(i, i_num, nuci);
 
             // stacking
-            std::cout  <<  "stacking--------" << std::endl;
+            //std::cout  <<  "stacking--------" << std::endl;
             for (auto &j1_node_nucj : dfa.right_edges[j_node]){
                 auto j1_node = std::get<0>(j1_node_nucj);
                 auto nucj = std::get<2>(j_node);
@@ -434,21 +430,21 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
                         NodeNucpair temp = {i_1, numi_1, static_cast<NucPairType>(NTP(nuci_1, nucj))};
                         update_if_better(bestP[j1_node][temp], newscore, cai_score);
 
-                        IndexType index;
-                        NumType num;
-                        NucType nuc;
-                        std::tie(index,num,nuc) = j1_node;
-                        std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
-                        std::cout << i_1 << "," << numi_1  << "," << GET_ACGU(nuci_1) << "," << GET_ACGU(nucj) << std::endl;
-                        std::cout << bestP[j1_node][temp].score << std::endl;
-                        std::cout << bestP[j1_node][temp].cai_score << std::endl;
-                        std::cout << "-------------"  << std::endl;
+                        // IndexType index;
+                        // NumType num;
+                        // NucType nuc;
+                        // std::tie(index,num,nuc) = j1_node;
+                        // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
+                        // std::cout << i_1 << "," << numi_1  << "," << GET_ACGU(nuci_1) << "," << GET_ACGU(nucj) << std::endl;
+                        // std::cout << newscore << "," << cai_score << std::endl;
+                        // std::cout << bestP[j1_node][temp].score << "," << bestP[j1_node][temp].cai_score << std::endl;
+                        // std::cout << "-------------"  << std::endl;
                     }
                 }
             }
 
             // right bulge: ((...)..) 
-            std::cout  <<  "right bulge--------" << std::endl;
+            //std::cout  <<  "right bulge--------" << std::endl;
             for (auto &j1_node_list : dfa.auxiliary_right_edges[j_node]){
                 auto j1_node = j1_node_list.first;
 
@@ -489,15 +485,15 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
                             NodeNucpair temp = {i_1, numi_1, static_cast<NucPairType>(outer_pair)};
                             update_if_better(bestP[q1_node][temp], newscore, cai_score);
 
-                            IndexType index;
-                            NumType num;
-                            NucType nuc;
-                            std::tie(index,num,nuc) = q1_node;
-                            std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
-                            std::cout << i_1 << "," << numi_1  << "," << GET_ACGU(nuci_1) << "," << GET_ACGU(nucq) << std::endl;
-                            std::cout << bestP[q1_node][temp].score << std::endl;
-                            std::cout << bestP[q1_node][temp].cai_score << std::endl;
-                            std::cout << "-------------"  << std::endl;
+                            // IndexType index;
+                            // NumType num;
+                            // NucType nuc;
+                            // std::tie(index,num,nuc) = q1_node;
+                            // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
+                            // std::cout << i_1 << "," << numi_1  << "," << GET_ACGU(nuci_1) << "," << GET_ACGU(nucq) << std::endl;
+                            // std::cout << newscore << "," << cai_score << std::endl;
+                            // std::cout << bestP[q1_node][temp].score << "," << bestP[q1_node][temp].cai_score << std::endl;
+                            // std::cout << "-------------"  << std::endl;
 
                             //break;
                         }
@@ -506,7 +502,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
             }
 
             // left bulge: (..(...)) 
-            std::cout  <<  "left bulge--------" << std::endl;
+            //std::cout  <<  "left bulge--------" << std::endl;
             for (auto &j1_node_nucj : dfa.right_edges[j_node]){
                 auto j1_node = std::get<0>(j1_node_nucj);
                 auto nucj = std::get<2>(j_node);
@@ -546,22 +542,22 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
                             NodeNucpair temp = {p_1, nump_1, static_cast<NucPairType>(outer_pair)};
                             update_if_better(bestP[j1_node][temp], newscore, cai_score);
 
-                            IndexType index;
-                            NumType num;
-                            NucType nuc;
-                            std::tie(index,num,nuc) = j1_node;
-                            std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
-                            std::cout << p_1 << "," << nump_1  << "," << GET_ACGU(nucp_1) << "," << GET_ACGU(nucj) << std::endl;
-                            std::cout << bestP[j1_node][temp].score << std::endl;
-                            std::cout << bestP[j1_node][temp].cai_score << std::endl;
-                            std::cout << "-------------"  << std::endl;
+                            // IndexType index;
+                            // NumType num;
+                            // NucType nuc;
+                            // std::tie(index,num,nuc) = j1_node;
+                            // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
+                            // std::cout << p_1 << "," << nump_1  << "," << GET_ACGU(nucp_1) << "," << GET_ACGU(nucj) << std::endl;
+                            // std::cout << newscore << "," << cai_score << std::endl;
+                            // std::cout << bestP[j1_node][temp].score << "," << bestP[j1_node][temp].cai_score << std::endl;
+                            // std::cout << "-------------"  << std::endl;
                         }
                     }                 
                 }
             }
 
             // internal loop
-            std::cout  <<  "internal loop--------" << std::endl;
+            //std::cout  <<  "internal loop--------" << std::endl;
             for (auto &j1_node_dict : dfa.auxiliary_right_edges[j_node]){
                 auto j1_node = j1_node_dict.first;
                 auto j1_num = std::get<1>(j1_node);
@@ -589,8 +585,10 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
                                 auto p1_num = std::get<1>(p1_node);
                                 auto nucp = std::get<2>(p_node);
                                 auto weight_nucp = std::get<1>(p1_node_nucp);
+                                auto i_num = std::get<1>(i_node);
 
-                                if (p == i - 1 and nucp != nuci_1) continue;
+                                //if (p == i - 1 and nucp != nuci_1) continue;
+                                if (p == i - 1 and p1_num != i_num) continue;
                                 else if (p == i - 2 and p1_num != i_1_num) continue;
                                 //else if (p == i - 3 and p1_num != i_1_num and dfa.nodes[p+1].size() == dfa.nodes[i-1].size()) continue; 
                                 else if (p == i - 3){
@@ -748,20 +746,21 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
                                                         }
                                                         //}
 
-                                                        IndexType index;
-                                                        NumType num;
-                                                        NucType nuc;
-                                                        std::tie(index,num,nuc) = q1_node;
-                                                        std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
-                                                        std::cout << p_1 << "," << nump_1  << "," << GET_ACGU(nucp_1) << "," << GET_ACGU(nucq) << std::endl;
-                                                        std::cout << bestP[q1_node][temp].score << std::endl;
-                                                        std::cout << bestP[q1_node][temp].cai_score << std::endl;
-                                                        std::cout << "-------------"  << std::endl;
+                                                        // IndexType index;
+                                                        // NumType num;
+                                                        // NucType nuc;
+                                                        // std::tie(index,num,nuc) = q1_node;
+                                                        // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
+                                                        // std::cout << p_1 << "," << nump_1  << "," << GET_ACGU(nucp_1) << "," << GET_ACGU(nucq) << std::endl;
+                                                        // std::cout << bestP[q1_node][temp].score << std::endl;
+                                                        // std::cout << bestP[q1_node][temp].cai_score << std::endl;
+                                                        // std::cout << "-------------"  << std::endl;
                                                     }                                                
                                                 }
                                             }
                                         }
                                     }
+                                    continue;
                                 }else{                                
                                     for (auto &p_1_node_nucp_1 : dfa.left_edges[p_node]){
                                         auto p_1_node = std::get<0>(p_1_node_nucp_1);
@@ -806,8 +805,12 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
                                                             weight_left = weight_nucp_1 + weight_nucp + get_broken_codon_score(p1_node, i_1_node) + weight_nuci_1;
                                                     }
                                                     double cai_score = state.cai_score + (weight_left + weight_nucj + weight_nucq); //j+1 == q
-
+                                                    
+                                                    // std::cout << "q=j+1" << "p=" << p << "q =" << q << std::endl;
+                                                    // std::cout << "state.cai_score ," << state.cai_score << "," << "weight_nucp_1, " << weight_nucp_1 << "," << "weight_nucp, " << weight_nucp << std::endl;
+                                                    // std::cout << "weight_nucj, " << weight_nucj << ", weight_nucq, " << weight_nucq << std::endl;
                                                     update_if_better(BestP_val, newscore, cai_score);
+
                                                 }else if (q == j+2){
                                                     for(auto& q_1_node_list : dfa.auxiliary_left_edges[q_node]){
                                                         auto q_1_node = q_1_node_list.first;
@@ -831,7 +834,12 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
                                                             }
 
                                                             auto cai_score = state.cai_score + (weight_left + weight_nucj + weight_nucq_1 + weight_nucq);
-
+                                                            
+                                                            // std::cout << "q=j+2" << "p=" << p << "q =" << q << std::endl;
+                                                            // std::cout << "state.cai_score ," << state.cai_score << std::endl;
+                                                            // std::cout << "weight_nucp_1, " << weight_nucp_1 << "," << "weight_nucp, " << weight_nucp << "," << "weight_nuci_1, " << weight_nuci_1 << std::endl;
+                                                            // std::cout << "weight_nucj, " << weight_nucj << ", weight_nucq_1, " << weight_nucq_1 << ", weight_nucq, " << weight_nucq << std::endl;
+                                                    
                                                             update_if_better(BestP_val, newscore, cai_score);
                                                         //}
                                                         //if(dfa.nodes[q-1].size() == 2) break;
@@ -870,6 +878,11 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
                                                                 else
                                                                     cai_score = state.cai_score + (weight_left + weight_nucj + get_broken_codon_score(j1_node, q_1_node) + weight_nucq_1 + weight_nucq);
 
+                                                                // std::cout << "q=j+3" << "p=" << p << "q =" << q << std::endl;
+                                                                // std::cout << "state.cai_score ," << state.cai_score << std::endl;
+                                                                // std::cout << "weight_nucp_1, " << weight_nucp_1 << "," << "weight_nucp, " << weight_nucp << "," << "weight_nuci_1, " << weight_nuci_1 << std::endl;
+                                                                // std::cout << "weight_nucj, " << weight_nucj << ", weight_nucq_1, " << weight_nucq_1 << ", weight_nucq, " << weight_nucq << std::endl;
+                                                        
                                                                 update_if_better(BestP_val, newscore, cai_score);
                                                             }
                                                         }
@@ -903,6 +916,11 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
                                                             else
                                                                 cai_score = state.cai_score + (weight_left + weight_nucj + get_broken_codon_score(j1_node, q_1_node) + weight_nucq_1 + weight_nucq);
                                                             
+                                                            // std::cout << "q>j+3" << "p=" << p << "q =" << q << std::endl;
+                                                            // std::cout << "state.cai_score ," << state.cai_score << std::endl;
+                                                            // std::cout << "weight_nucp_1, " << weight_nucp_1 << "," << "weight_nucp, " << weight_nucp << "," << "weight_nuci_1, " << weight_nuci_1 << std::endl;
+                                                            // std::cout << "weight_nucj, " << weight_nucj << ", weight_nucq_1, " << weight_nucq_1 << ", weight_nucq, " << weight_nucq << std::endl;
+                                                    
                                                             update_if_better(BestP_val, newscore, cai_score);
                                                         //}
                                                         //if(dfa.nodes[q-1].size() == 2) break;
@@ -910,15 +928,15 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
                                                 }
                                                 //}
 
-                                                IndexType index;
-                                                NumType num;
-                                                NucType nuc;
-                                                std::tie(index,num,nuc) = q1_node;
-                                                std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
-                                                std::cout << p_1 << "," << nump_1  << "," << GET_ACGU(nucp_1) << "," << GET_ACGU(nucq) << std::endl;
-                                                std::cout << bestP[q1_node][temp].score << std::endl;
-                                                std::cout << bestP[q1_node][temp].cai_score << std::endl;
-                                                std::cout << "-------------"  << std::endl;
+                                                // IndexType index;
+                                                // NumType num;
+                                                // NucType nuc;
+                                                // std::tie(index,num,nuc) = q1_node;
+                                                // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
+                                                // std::cout << p_1 << "," << nump_1  << "," << GET_ACGU(nucp_1) << "," << GET_ACGU(nucq) << std::endl;
+                                                // std::cout << bestP[q1_node][temp].score << std::endl;
+                                                // std::cout << bestP[q1_node][temp].cai_score << std::endl;
+                                                // std::cout << "-------------"  << std::endl;
                                             }
                                         }
                                     }
@@ -932,7 +950,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
     }
     
     // M = P and M_P = P
-    std::cout  << "M = P,M_P = P" <<  "-----" << std::endl;
+    //std::cout  << "M = P,M_P = P" <<  "-----" << std::endl;
     for (size_t i_node_nucpair_ = 0; i_node_nucpair_ < 64 * j; ++i_node_nucpair_){
         auto& state = bestP[j_node][i_node_nucpair_];
         if (state.score == util::value_min<ScoreType>())
@@ -954,24 +972,24 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
             update_if_better(bestM[j_node][i_node], M1_score, state.cai_score);
             update_if_better(bestM_P[j_node][i_node], M1_score, state.cai_score);
 
-            IndexType index;
-            NumType num;
-            NucType nuc;
-            std::tie(index,num,nuc) = j_node;
-            std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
-            std::tie(index,num,nuc) = i_node;
-            std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
-            std::cout << bestM[j_node][i_node].score << std::endl;
-            std::cout << bestM[j_node][i_node].cai_score << std::endl;
-            std::cout << bestM_P[j_node][i_node].score << std::endl;
-            std::cout << bestM_P[j_node][i_node].cai_score << std::endl;
-            std::cout << "-------------"  << std::endl;
+            // IndexType index;
+            // NumType num;
+            // NucType nuc;
+            // std::tie(index,num,nuc) = j_node;
+            // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
+            // std::tie(index,num,nuc) = i_node;
+            // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
+            // std::cout << bestM[j_node][i_node].score << std::endl;
+            // std::cout << bestM[j_node][i_node].cai_score << std::endl;
+            // std::cout << bestM_P[j_node][i_node].score << std::endl;
+            // std::cout << bestM_P[j_node][i_node].cai_score << std::endl;
+            // std::cout << "-------------"  << std::endl;
             
         }
     }
 
     // M2 = M + M_P
-    std::cout  << "M2 = M + M_P" <<  "-----" << std::endl;
+    //std::cout  << "M2 = M + M_P" <<  "-----" << std::endl;
     for (size_t i_node_ = 0; i_node_ < 64 * j; ++i_node_) {
         auto& state = bestM_P[j_node][i_node_];
         //auto i_node = reverse_index(i_node_);
@@ -992,25 +1010,25 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
                 auto cai_score = m_new_state_score.cai_score + state.cai_score;
                 update_if_better(bestM2[j_node][m_node_], newscore, cai_score);
 
-                IndexType index;
-                NumType num;
-                NucType nuc;
-                std::tie(index,num,nuc) = j_node;
-                std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
-                auto node_nuc = reverse_index(m_node_);
-                auto m_node= make_tuple(node_nuc.node_first, node_nuc.node_second, node_nuc.nucpair);
-                std::tie(index,num,nuc) = m_node;
-                std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
-                std::cout << bestM2[j_node][m_node].score << std::endl;
-                std::cout << bestM2[j_node][m_node].cai_score << std::endl;
-                std::cout << "-------------"  << std::endl;
+                // IndexType index;
+                // NumType num;
+                // NucType nuc;
+                // std::tie(index,num,nuc) = j_node;
+                // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
+                // auto node_nuc = reverse_index(m_node_);
+                // auto m_node= make_tuple(node_nuc.node_first, node_nuc.node_second, node_nuc.nucpair);
+                // std::tie(index,num,nuc) = m_node;
+                // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
+                // std::cout << bestM2[j_node][m_node].score << std::endl;
+                // std::cout << bestM2[j_node][m_node].cai_score << std::endl;
+                // std::cout << "-------------"  << std::endl;
 
             }
         }
     }
 
     // C = C + P
-    std::cout  << "C = C + P" <<  "-----" << std::endl;
+    //std::cout  << "C = C + P" <<  "-----" << std::endl;
     for (size_t i_node_nucpair_ = 0; i_node_nucpair_ < 64 * j; ++i_node_nucpair_){
         auto& state = bestP[j_node][i_node_nucpair_];
         if (state.score == util::value_min<ScoreType>())
@@ -1037,15 +1055,15 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::P_beam(IndexType j, DFA_t& d
             update_if_better(bestC[j_node], newscore, state.cai_score);
         }
 
-        IndexType index;
-        NumType num;
-        NucType nuc;
-        std::tie(index,num,nuc) = j_node;
-        std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
-        std::cout << i << "," << i_num << "," << GET_ACGU(nuci) << GET_ACGU(nucj_1) << std::endl;
-        std::cout << bestC[j_node].score << std::endl;
-        std::cout << bestC[j_node].cai_score << std::endl;
-        std::cout << "-------------"  << std::endl;
+        // IndexType index;
+        // NumType num;
+        // NucType nuc;
+        // std::tie(index,num,nuc) = j_node;
+        // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
+        // std::cout << i << "," << i_num << "," << GET_ACGU(nuci) << GET_ACGU(nucj_1) << std::endl;
+        // std::cout << bestC[j_node].score << std::endl;
+        // std::cout << bestC[j_node].cai_score << std::endl;
+        // std::cout << "-------------"  << std::endl;
     }
 }
 
@@ -1056,7 +1074,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::M2_beam(IndexType j, DFA_t& 
     for (auto &j_at_node : dfa.nodes[j]){
         IndexType j_at_num = get<1>(j_at_node);
         if (j_num == j_at_num){
-            auto nuc_j=get<2>(j_at_node);
+            nuc_j=get<2>(j_at_node);
             break;
         }else 
             continue;
@@ -1065,7 +1083,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::M2_beam(IndexType j, DFA_t& 
     auto j_node = make_tuple(j,j_num,nuc_j);
     //auto j_node = make_pair(j, j_num);
 
-    std::cout  << j << "," << j_num <<  "------------------" << std::endl;
+    //std::cout  << j << "," << j_num <<  "," << GET_ACGU(nuc_j) << "-----" << std::endl;
     for (size_t i_node_ = 0; i_node_ < 64 * j; ++i_node_) {
         auto& state = bestM2[j_node][i_node_];
         if (state.score == util::value_min<ScoreType>())
@@ -1076,7 +1094,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::M2_beam(IndexType j, DFA_t& 
         auto i = std::get<0>(i_node);
 
         // 1. multi-loop
-        std::cout  << "multi-loop-------" << std::endl;
+        //std::cout  << "multi-loop-------" << std::endl;
         for (IndexType p = i-1; p >= max(i - SINGLE_MAX_LEN, 0); --p){
             vector<tuple<int, NumType,NucType>> p_node_list;
             if (p == i - 1)
@@ -1119,15 +1137,15 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::M2_beam(IndexType j, DFA_t& 
                                         update_if_better(bestMulti[q1_node][temp], state.score, cai_score, j_node, temp_left_cai);
                                         //break;
 
-                                        IndexType index;
-                                        NumType num;
-                                        NucType nuc;
-                                        std::tie(index,num,nuc) = q1_node;
-                                        std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
-                                        std::cout << p << "," << p_num  << "," << GET_ACGU(nucp) << "," << GET_ACGU(nucq) << std::endl;
-                                        std::cout << bestP[q1_node][temp].score << std::endl;
-                                        std::cout << bestP[q1_node][temp].cai_score << std::endl;
-                                        std::cout << "-------------"  << std::endl;
+                                        // IndexType index;
+                                        // NumType num;
+                                        // NucType nuc;
+                                        // std::tie(index,num,nuc) = q1_node;
+                                        // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
+                                        // std::cout << p << "," << p_num  << "," << GET_ACGU(nucp) << "," << GET_ACGU(nucq) << std::endl;
+                                        // std::cout << bestMulti[q1_node][temp].score << std::endl;
+                                        // std::cout << bestMulti[q1_node][temp].cai_score << std::endl;
+                                        // std::cout << "-------------"  << std::endl;
                                     }
                                 }
                             }
@@ -1155,15 +1173,15 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::M2_beam(IndexType j, DFA_t& 
                                     update_if_better(bestMulti[q1_node][temp], state.score, cai_score, j_node, temp_left_cai);
                                     //break;
 
-                                    IndexType index;
-                                    NumType num;
-                                    NucType nuc;
-                                    std::tie(index,num,nuc) = q1_node;
-                                    std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
-                                    std::cout << p << "," << p_num  << "," << GET_ACGU(nucp) << "," << GET_ACGU(nucq) << std::endl;
-                                    std::cout << bestP[q1_node][temp].score << std::endl;
-                                    std::cout << bestP[q1_node][temp].cai_score << std::endl;
-                                    std::cout << "-------------"  << std::endl;
+                                    // IndexType index;
+                                    // NumType num;
+                                    // NucType nuc;
+                                    // std::tie(index,num,nuc) = q1_node;
+                                    // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;               
+                                    // std::cout << p << "," << p_num  << "," << GET_ACGU(nucp) << "," << GET_ACGU(nucq) << std::endl;
+                                    // std::cout << bestMulti[q1_node][temp].score << std::endl;
+                                    // std::cout << bestMulti[q1_node][temp].cai_score << std::endl;
+                                    // std::cout << "-------------"  << std::endl;
 
                                 }
                             }
@@ -1173,19 +1191,19 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::M2_beam(IndexType j, DFA_t& 
             }
         }
         //  2. M = M2
-        std::cout  << "M = M2-------" << std::endl;
+        //std::cout  << "M = M2-------" << std::endl;
         update_if_better(bestM[j_node][i_node], state.score, state.cai_score);
 
-        IndexType index;
-        NumType num;
-        NucType nuc;
-        std::tie(index,num,nuc) = j_node;
-        std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
-        std::tie(index,num,nuc) = i_node;
-        std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
-        std::cout << bestM[j_node][i_node].score << std::endl;
-        std::cout << bestM[j_node][i_node].cai_score << std::endl;
-        std::cout << "-------------"  << std::endl;
+        // IndexType index;
+        // NumType num;
+        // NucType nuc;
+        // std::tie(index,num,nuc) = j_node;
+        // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
+        // std::tie(index,num,nuc) = i_node;
+        // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
+        // std::cout << bestM[j_node][i_node].score << std::endl;
+        // std::cout << bestM[j_node][i_node].cai_score << std::endl;
+        // std::cout << "-------------"  << std::endl;
 
     }
 }
@@ -1198,7 +1216,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::M_beam(IndexType j, DFA_t& d
     for (auto &j_at_node : dfa.nodes[j]){
         IndexType j_at_num = get<1>(j_at_node);
         if (j_num == j_at_num){
-            auto nuc_j=get<2>(j_at_node);
+            nuc_j=get<2>(j_at_node);
             break;
         }else 
             continue;
@@ -1207,8 +1225,8 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::M_beam(IndexType j, DFA_t& d
     auto j_node = make_tuple(j,j_num,nuc_j);
     //auto j_node = make_pair(j, j_num);
 
-    std::cout  << j << "," << j_num <<  "------------------" << std::endl;
-    std::cout  << "M(i,j)->M(i,j+1)-------" << std::endl;
+    //std::cout  << j << "," << j_num <<  "," << GET_ACGU(nuc_j) << "-----" << std::endl;
+    //std::cout  << "M(i,j)->M(i,j+1)-------" << std::endl;
     for (size_t i_node_ = 0; i_node_ < 64 * j; ++i_node_) {
         auto& state = bestM[j_node][i_node_];
         if (state.score == util::value_min<ScoreType>())
@@ -1225,16 +1243,16 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::M_beam(IndexType j, DFA_t& d
             double cai_score = state.cai_score + weight_nucj;
             update_if_better(bestM[j1_node][i_node], state.score, cai_score);
 
-            IndexType index;
-            NumType num;
-            NucType nuc;
-            std::tie(index,num,nuc) = j1_node;
-            std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
-            std::tie(index,num,nuc) = i_node;
-            std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
-            std::cout << bestM[j1_node][i_node].score << std::endl;
-            std::cout << bestM[j1_node][i_node].cai_score << std::endl;
-            std::cout << "-------------"  << std::endl;
+            // IndexType index;
+            // NumType num;
+            // NucType nuc;
+            // std::tie(index,num,nuc) = j1_node;
+            // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
+            // std::tie(index,num,nuc) = i_node;
+            // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
+            // std::cout << bestM[j1_node][i_node].score << std::endl;
+            // std::cout << bestM[j1_node][i_node].cai_score << std::endl;
+            // std::cout << "-------------"  << std::endl;
 
         }
     }
@@ -1250,7 +1268,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::C_beam(IndexType j, DFA_t& d
     for (auto &j_at_node : dfa.nodes[j]){
         IndexType j_at_num = get<1>(j_at_node);
         if (j_num == j_at_num){
-            auto nuc_j=get<2>(j_at_node);
+            nuc_j=get<2>(j_at_node);
             break;
         }else 
             continue;
@@ -1260,8 +1278,8 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::C_beam(IndexType j, DFA_t& d
 
     auto& state = bestC[j_node];
 
-    std::cout  << j << "," << j_num <<  "------------------" << std::endl;
-    std::cout  << "C(j)->C(j+1)-------" << std::endl;
+    //std::cout  << j << "," << j_num <<  "," << GET_ACGU(nuc_j) << "-----" << std::endl;
+    //std::cout  << "C(j)->C(j+1)-------" << std::endl;
     for (auto &j1_node_nucj : dfa.right_edges[j_node]){
         NodeType j1_node = std::get<0>(j1_node_nucj);
         IndexType nucj = std::get<2>(j_node);
@@ -1270,14 +1288,14 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::C_beam(IndexType j, DFA_t& d
         double cai_score = state.cai_score + (double)weight_nucj;
         update_if_better(bestC[j1_node], state.score, cai_score);
 
-        IndexType index;
-        NumType num;
-        NucType nuc;
-        std::tie(index,num,nuc) = j1_node;
-        std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
-        std::cout << bestC[j1_node].score << std::endl;
-        std::cout << bestC[j1_node].cai_score << std::endl;
-        std::cout << "-------------"  << std::endl;
+        // IndexType index;
+        // NumType num;
+        // NucType nuc;
+        // std::tie(index,num,nuc) = j1_node;
+        // std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
+        // std::cout << bestC[j1_node].score << std::endl;
+        // std::cout << bestC[j1_node].cai_score << std::endl;
+        // std::cout << "-------------"  << std::endl;
     }
 }
 
@@ -1326,9 +1344,7 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::get_next_pair(DFA_t& dfa) {
                                                                      temp_vector.begin(),
                                                                      temp_vector.end());
                     }
-                    //std::cout << next_pair[nuci][j_1_node].size() << std::endl;
                 }
-                //std::cout << "j-1--------------" << std::endl;
             }
         }
     }
@@ -1419,60 +1435,56 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::get_prev_pair_set() {
 }
 
 
-
-// #ifdef SPECIAL_HP
-// template <typename ScoreType, typename IndexType, typename NodeType>
-// void BeamCKYParser<ScoreType, IndexType, NodeType>::special_hp(DFA_t& dfa, int8_t hairpin_length) {
-//     int8_t hairpin_type = HAIRPINTYPE(hairpin_length);
-//     vector<tuple<NodeType, string, double, NodeType>> queue;
-//     vector<tuple<NodeType, string, double, NodeType>> frontier; 
-//     // vector
-//     for(IndexType i=0; i<=seq_length - hairpin_length; i++){
-//         for(NodeType i_node : dfa.nodes[i]){
-//             int count = hairpin_length;
-//             queue.clear();
-//             queue.push_back(make_tuple(i_node, "", double(0.), i_node));
-//             while(count > 0){
-//                 count --;
-//                 frontier.clear();
-//                 for(auto& node_str : queue){
-//                     NodeType cur_node = std::get<0>(node_str);
-//                     string cur_str = std::get<1>(node_str);
-//                     double cur_lncai = std::get<2>(node_str);
-//                     for(auto& node_nuc : dfa.right_edges[cur_node]){
-//                         NodeType new_node = std::get<0>(node_nuc);
-//                         string new_str = cur_str + GET_ACGU(std::get<1>(node_nuc));
-//                         double new_total_lncai = cur_lncai + std::get<2>(node_nuc);
-//                         frontier.push_back(make_tuple(new_node, new_str, new_total_lncai, cur_node));
-//                     }
-//                 }
-//                 queue.swap(frontier);
-//             }
-//             for(auto node_str : queue){
-//                 auto j_node = std::get<3>(node_str);
-//                 auto temp_seq = std::get<1>(node_str);
-//                 auto cai_score = std::get<2>(node_str);
-//                 auto hairpin_length = temp_seq.size();
-//                 int8_t hairpin_type = HAIRPINTYPE(hairpin_length);
-//                 NucType nuci = GET_ACGU_NUC(temp_seq[0]);
-//                 NucType nucj = GET_ACGU_NUC(temp_seq[temp_seq.size() - 1]);
-//                 auto temp_nucpair = NTP(nuci, nucj);
-
-//                 ScoreType special_hairpin_score = func1(temp_seq, hairpin_type);
-//                 if(special_hairpin_score == SPECIAL_HAIRPIN_SCORE_BASELINE){
-
-//                     auto newscore = - func12(0, hairpin_length - 1, GET_ACGU_NUC(temp_seq[0]), GET_ACGU_NUC(temp_seq[1]), GET_ACGU_NUC(temp_seq[hairpin_length-2]), GET_ACGU_NUC(temp_seq[hairpin_length-1]), tetra_hex_tri);
-//                     hairpin_seq_score_cai[i_node][j_node][temp_nucpair].push_back(make_tuple(temp_seq, newscore, cai_score));
-//                 }
-
-//                 else{
-//                     hairpin_seq_score_cai[i_node][j_node][temp_nucpair].push_back(make_tuple(temp_seq, special_hairpin_score, cai_score));
-//                 }
-//             }
-//         }
-//     }
-// }
-// #endif
+#ifdef SPECIAL_HP
+template <typename ScoreType, typename IndexType, typename NodeType>
+void BeamCKYParser<ScoreType, IndexType, NodeType>::special_hp(DFA_t& dfa, int8_t hairpin_length) {
+    int8_t hairpin_type = HAIRPINTYPE(hairpin_length);
+    vector<tuple<NodeType, string, double, NodeType>> queue;
+    vector<tuple<NodeType, string, double, NodeType>> frontier; 
+    // vector
+    for(IndexType i=0; i<=seq_length - hairpin_length; i++){
+        for(NodeType i_node : dfa.nodes[i]){
+            int count = hairpin_length;
+            queue.clear();
+            queue.push_back(make_tuple(i_node, "", double(0.), i_node));
+            while(count > 0){
+                count --;
+                frontier.clear();
+                for(auto& node_str : queue){
+                    NodeType cur_node = std::get<0>(node_str);
+                    string cur_str = std::get<1>(node_str);
+                    double cur_lncai = std::get<2>(node_str);
+                    for(auto& node_nuc : dfa.right_edges[cur_node]){
+                        NodeType new_node = std::get<0>(node_nuc);
+                        string new_str = cur_str + GET_ACGU(std::get<2>(cur_node));
+                        double new_total_lncai = cur_lncai + std::get<1>(node_nuc);
+                        frontier.push_back(make_tuple(new_node, new_str, new_total_lncai, cur_node));
+                    }
+                }
+                queue.swap(frontier);
+            }
+            for(auto node_str : queue){
+                auto j_node = std::get<3>(node_str);
+                auto temp_seq = std::get<1>(node_str);
+                auto cai_score = std::get<2>(node_str);
+                auto hairpin_length = temp_seq.size();
+                int8_t hairpin_type = HAIRPINTYPE(hairpin_length);
+                NucType nuci = GET_ACGU_NUC(temp_seq[0]);
+                NucType nucj = GET_ACGU_NUC(temp_seq[temp_seq.size() - 1]);
+                auto temp_nucpair = NTP(nuci, nucj);
+                ScoreType special_hairpin_score = func1(temp_seq, hairpin_type);
+                if(special_hairpin_score == SPECIAL_HAIRPIN_SCORE_BASELINE){
+                    auto newscore = - func12(0, hairpin_length - 1, GET_ACGU_NUC(temp_seq[0]), GET_ACGU_NUC(temp_seq[1]), GET_ACGU_NUC(temp_seq[hairpin_length-2]), GET_ACGU_NUC(temp_seq[hairpin_length-1]), tetra_hex_tri);
+                    hairpin_seq_score_cai[i_node][j_node][temp_nucpair].push_back(make_tuple(temp_seq, newscore, cai_score));
+                }
+                else{
+                    hairpin_seq_score_cai[i_node][j_node][temp_nucpair].push_back(make_tuple(temp_seq, special_hairpin_score, cai_score));
+                }
+            }
+        }
+    }
+}
+#endif
 
 
 template <typename ScoreType, typename IndexType, typename NodeType>
@@ -1529,22 +1541,6 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::preprocess(DFA_t& dfa) {
         }
     }
 
-    for(NucType nuci=0; nuci<5; nuci++){
-        for (auto& j_node_vnuc : next_list[nuci]) {
-            NodeType j_node = j_node_vnuc.first;
-            next_pair_set[nuci][j_node] = set<tuple<NodeType, NucType, double>>(j_node_vnuc.second.begin(), j_node_vnuc.second.end());
-        }
-    }
-    for(NucType nuci=0; nuci<5; nuci++){
-        for (auto& j_node_vnuc : next_pair_set[nuci]) {
-            NodeType j_node = j_node_vnuc.first;
-            next_list[nuci][j_node].clear();
-            for(auto& item : next_pair_set[nuci][j_node]){
-                next_list[nuci][j_node].push_back(item);
-            }
-        }
-    }
-
     // prev_list
     init_node = make_tuple(seq_length,0,0);
     for (NucType nucj=1; nucj<NOTON; nucj++) {
@@ -1576,7 +1572,6 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::preprocess(DFA_t& dfa) {
                         prev_list[nucj][i_node].push_back(p_node_nucp_1);
 
                 for(auto& p_1_node_new_nucp_1 : dfa.left_edges[p_node]){
-
                     NodeType p_1_node = std::get<0>(p_1_node_new_nucp_1);         
                     NucType new_nucp_1 = std::get<2>(p_1_node);
                     if(nucp_1 != new_nucp_1) continue;
@@ -1588,22 +1583,6 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::preprocess(DFA_t& dfa) {
                 }
             }
             p_list.swap(new_p_list);
-        }
-    }
-    for(NucType nuci=0; nuci<5; nuci++){
-        for (auto& j_node_vnuc : prev_list[nuci]) {
-            NodeType j_node = j_node_vnuc.first;
-            prev_pair_set[nuci][j_node] =
-                set<tuple<NodeType, NucType, double>>(j_node_vnuc.second.begin(), j_node_vnuc.second.end());
-        }
-    }
-    for(NucType nuci=0; nuci<5; nuci++){
-        for (auto& j_node_vnuc : prev_pair_set[nuci]) {
-            NodeType j_node = j_node_vnuc.first;
-            prev_list[nuci][j_node].clear();
-            for(auto& item : prev_pair_set[nuci][j_node]){
-                prev_list[nuci][j_node].push_back(item);
-            }
         }
     }
 
@@ -1657,21 +1636,22 @@ void BeamCKYParser<ScoreType, IndexType, NodeType>::preprocess(DFA_t& dfa) {
         }   
     }
 
-// #ifdef SPECIAL_HP
-//     // Triloops
-//     special_hp(dfa, 5);
-//     // Tetraloop37
-//     special_hp(dfa, 6);
-//     // Hexaloops
-//     special_hp(dfa, 8);
-// #endif
+#ifdef SPECIAL_HP
+    // Triloops
+    special_hp(dfa, 5);
+    // Tetraloop37
+    special_hp(dfa, 6);
+    // Hexaloops
+    special_hp(dfa, 8);
+#endif
+
 }
 
 template <typename ScoreType, typename IndexType, typename NodeType>
 DecoderResult<double, IndexType> BeamCKYParser<ScoreType, IndexType, NodeType>::parse(
         DFA_t& dfa, Codon& codon, std::string& aa_seq, std::vector<std::string>& p, 
         std::unordered_map<std::string, std::string>& aa_best_in_codon,
-        std::unordered_map<std::string, std::unordered_map<std::tuple<NodeType, NodeType>, std::tuple<double, NucType, NucType>, 
+        std::unordered_map<std::string, std::unordered_map<std::tuple<NodeType, NodeType>, std::tuple<double, NucType, NucType, NucType>, 
             std::hash<std::tuple<NodeType, NodeType>>>>& best_path_in_one_codon,
             std::unordered_map<string, Lattice<IndexType>>& aa_graphs_with_ln_weights) {
     
@@ -1806,7 +1786,6 @@ DecoderResult<double, IndexType> BeamCKYParser<ScoreType, IndexType, NodeType>::
                     break;
                 for (auto & node_j : dfa.nodes[j]){
                     get_broken_codon_score_map[node_i][node_j] = get_broken_codon_score(node_i, node_j);
-                    //std::cout << get_broken_codon_score_map[node_i][node_j] << std::endl;
                 }
             }
         }
@@ -1820,26 +1799,26 @@ DecoderResult<double, IndexType> BeamCKYParser<ScoreType, IndexType, NodeType>::
         auto weight_nuc = std::get<1>(node_weight);
         update_if_better(bestC[node], 0, weight_nuc);
     }
+
     
     for (IndexType j = 0; j <= seq_length; ++j) {
         //cout << "j=" << j << "\r" << flush;
-        std::cout << "j=" << j << "--------------------------------------------------" << std::endl;
-        // for(IndexType i=0;i<6;i++){
-        //     hairpin_beam<i>(j, dfa);
-        // }
+        //std::cout << "j=" << j << "--------------------------------------------------" << std::endl;
 
-        std::cout << "bestH----------------------------" << std::endl;
+        //std::cout << "bestH----------------------------" << std::endl;
         hairpin_beam<0>(j, dfa);
         hairpin_beam<1>(j, dfa);
+        //std::cout << "hairpin_beam<1>----------" << std::endl;
         hairpin_beam<2>(j, dfa);
+        //std::cout << "hairpin_beam<2>----------" << std::endl;
         hairpin_beam<3>(j, dfa);
         hairpin_beam<4>(j, dfa);
         hairpin_beam<5>(j, dfa);
         
         if (j == 0)
             continue;
-        
-        std::cout << "bestMulti------------------------" << std::endl;
+
+        //std::cout << "bestMulti------------------------" << std::endl;
         Multi_beam<0>(j, dfa);
         Multi_beam<1>(j, dfa);
         Multi_beam<2>(j, dfa);
@@ -1847,7 +1826,7 @@ DecoderResult<double, IndexType> BeamCKYParser<ScoreType, IndexType, NodeType>::
         Multi_beam<4>(j, dfa);
         Multi_beam<5>(j, dfa);
 
-        std::cout << "bestP----------------------------" << std::endl;
+        //std::cout << "bestP----------------------------" << std::endl;
         P_beam<0>(j, dfa);
         P_beam<1>(j, dfa);
         P_beam<2>(j, dfa);
@@ -1855,7 +1834,7 @@ DecoderResult<double, IndexType> BeamCKYParser<ScoreType, IndexType, NodeType>::
         P_beam<4>(j, dfa);
         P_beam<5>(j, dfa);
 
-        std::cout << "bestM2---------------------------" << std::endl;
+        //std::cout << "bestM2---------------------------" << std::endl;
         M2_beam<0>(j, dfa);
         M2_beam<1>(j, dfa);
         M2_beam<2>(j, dfa);
@@ -1865,7 +1844,7 @@ DecoderResult<double, IndexType> BeamCKYParser<ScoreType, IndexType, NodeType>::
         
        
         if (j < seq_length) {
-            std::cout << "bestM----------------------------" << std::endl;
+            //std::cout << "bestM----------------------------" << std::endl;
             M_beam<0>(j, dfa);
             M_beam<1>(j, dfa);
             M_beam<2>(j, dfa);
@@ -1873,40 +1852,16 @@ DecoderResult<double, IndexType> BeamCKYParser<ScoreType, IndexType, NodeType>::
             M_beam<4>(j, dfa);
             M_beam<5>(j, dfa);
 
-            std::cout << "bestC----------------------------" << std::endl;
+           //std::cout << "bestC----------------------------" << std::endl;
             C_beam<0>(j, dfa);
             C_beam<1>(j, dfa);
             C_beam<2>(j, dfa);
             C_beam<3>(j, dfa);
             C_beam<4>(j, dfa);
             C_beam<5>(j, dfa);
+
         }
     }
-
-    // std::cout << "bestP------------" << std::endl;
-    // for(IndexType j = 0; j <= seq_length; ++j){
-    //     for (auto& node : dfa.nodes[j]){
-    //         std::cout << "------------" << std::endl;
-    //         IndexType index;
-    //         NumType num;
-    //         NucType nuc;
-    //         std::tie(index,num,nuc) = node;
-    //         std::cout << index << "," << num << "," << nuc << std::endl;
-    //         for (size_t i_node_nucpair_ = 0; i_node_nucpair_ < 64 * j; ++i_node_nucpair_) {
-    //             if (bestP[node][i_node_nucpair_].score == util::value_min<ScoreType>())
-    //                 continue;
-    //             auto i_node_nucpair = reverse_index(i_node_nucpair_);
-    //             auto i = i_node_nucpair.node_first;
-    //             auto i_num = i_node_nucpair.node_second;
-    //             auto pair_nuc = i_node_nucpair.nucpair;
-    //             auto nuci = PTLN(pair_nuc);
-    //             auto nucj_1 = PTRN(pair_nuc);
-    //             std::cout << i << "," << i_num << "," <<  pair_nuc << "," << nuci << "," << nucj_1 << std::endl;
-    //             std::cout << bestP[node][i_node_nucpair_].score << std::endl;
-    //             std::cout << bestP[node][i_node_nucpair_].cai_score << std::endl;
-    //         }
-    //     }
-    // }
 
     // std::cout << "bestH------------" << std::endl;
     // for(IndexType j = 0; j <= seq_length; ++j){
@@ -1929,6 +1884,33 @@ DecoderResult<double, IndexType> BeamCKYParser<ScoreType, IndexType, NodeType>::
     //             std::cout << i << "," << i_num << "," <<  pair_nuc << "," << nuci << "," << nucj_1 << std::endl;
     //             std::cout << bestH[node][i_node_nucpair_].score << std::endl;
     //             std::cout << bestH[node][i_node_nucpair_].cai_score << std::endl;
+    //         }
+    //     }
+    // }
+
+    // std::cout << "bestP------------" << std::endl;
+    // for(IndexType j = 0; j <= seq_length; ++j){
+    //     for (auto& node : dfa.nodes[j]){
+    //         std::cout << "j=" << j << "-------------------------" << std::endl;
+    //         IndexType index;
+    //         NumType num;
+    //         NucType nuc;
+    //         std::tie(index,num,nuc) = node;
+    //         //std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
+    //         for (size_t i_node_nucpair_ = 0; i_node_nucpair_ < 64 * j; ++i_node_nucpair_) {
+    //             if (bestP[node][i_node_nucpair_].score == util::value_min<ScoreType>())
+    //                 continue;
+    //             auto i_node_nucpair = reverse_index(i_node_nucpair_);
+    //             auto i = i_node_nucpair.node_first;
+    //             auto i_num = i_node_nucpair.node_second;
+    //             auto pair_nuc = i_node_nucpair.nucpair;
+    //             auto nuci = PTLN(pair_nuc);
+    //             auto nucj_1 = PTRN(pair_nuc);
+    //             std::cout << "-------------------------" << std::endl;
+    //             std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
+    //             std::cout << i << "," << i_num << "," <<  pair_nuc << "," << GET_ACGU(nuci) << "," << GET_ACGU(nucj_1) << std::endl;
+    //             std::cout << bestP[node][i_node_nucpair_].score << std::endl;
+    //             std::cout << bestP[node][i_node_nucpair_].cai_score << std::endl;
     //         }
     //     }
     // }

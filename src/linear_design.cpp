@@ -51,14 +51,14 @@ void linearDesign(int n, vector<std::string> aa_seq_list){
     //     if (string(argv[3]) != ""){
     //         CODON_TABLE = argv[3];
     //     }
-    // } 
-    // lambda *= 100.;
+    //  }
+    lambda *= 100.;
 
     Codon codon(CODON_TABLE);
     //std::cout << codon.aa_table_["A"][0].first << std::endl;
 
     std::unordered_map<std::string, Lattice<IndexType>> aa_graphs_with_ln_weights;
-    std::unordered_map<std::string, std::unordered_map<std::tuple<NodeType, NodeType>, std::tuple<double, NucType, NucType>, std::hash<std::tuple<NodeType, NodeType>>>> best_path_in_one_codon_unit;
+    std::unordered_map<std::string, std::unordered_map<std::tuple<NodeType, NodeType>, std::tuple<double, NucType, NucType, NucType>, std::hash<std::tuple<NodeType, NodeType>>>> best_path_in_one_codon_unit;
     std::unordered_map<std::string, std::string> aa_best_path_in_a_whole_codon;
     prepare_codon_unit_lattice<IndexType>(CODING_WHEEL, codon, aa_graphs_with_ln_weights, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon, lambda);
 
@@ -74,35 +74,27 @@ void linearDesign(int n, vector<std::string> aa_seq_list){
     //     }else if(i==3){
     //         size=6;
     //     }
-         
     //     for(int j=0;j<size;j++){
     //         NodeType node;
     //         IndexType index;
     //         NumType num;
     //         NucType nuc;
-    //         node = aa_graphs_with_ln_weights["Leu"].nodes[i][j];
+    //         node = aa_graphs_with_ln_weights["Ser"].nodes[i][j];
     //         std::tie(index,num,nuc) = node;
-    //         std::cout << index << "," << num << "," << nuc << std::endl;
-
-    //         for (auto &node_weight : aa_graphs_with_ln_weights["Leu"].left_edges[node]){
+    //         std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
+    //         for (auto &node_weight : aa_graphs_with_ln_weights["Ser"].left_edges[node]){
     //             IndexType index_nr;
     //             NumType num_nr;
     //             NucType nuc_nr;
     //             NodeType node_right = std::get<0>(node_weight);
     //             double weight = std::get<1>(node_weight);
     //             std::tie(index_nr,num_nr,nuc_nr) = node_right;
-    //             std::cout << index_nr << "," << num_nr << "," << nuc_nr << "," << weight << std::endl;
-    //             //
-    //             double weight1;
-    //             NucType nuc1;
-    //             NucType nuc2;
-    //             std::tie(weight1,nuc1,nuc2) = best_path_in_one_codon_unit["Leu"][make_tuple(node,node_right)];
-    //             std::cout << weight1 << ","<<  nuc1 << ","<<  nuc2 << std::endl;
+    //             std::cout << index_nr << "," << num_nr << "," << GET_ACGU(nuc_nr) << "," << weight << std::endl;
+    //             
+    //            
     //         }
     //          std::cout <<  "........."  << std::endl;
-
     //     }
-
     // }
     
     // main loop
@@ -120,7 +112,6 @@ void linearDesign(int n, vector<std::string> aa_seq_list){
         std::cout << aa_tri_seq << std::endl;
 
         auto protein = split(aa_tri_seq, ' ');
-        //std::cout << protein[0] << std::endl;
 
         //init parser
         BeamCKYParser<ScoreType, IndexType> parser(lambda, is_verbose);
@@ -128,7 +119,6 @@ void linearDesign(int n, vector<std::string> aa_seq_list){
         // parse
         auto system_start = chrono::system_clock::now();
         auto dfa = get_dfa<IndexType>(aa_graphs_with_ln_weights, split(aa_tri_seq, ' '));
-        //std::cout << std::get<2>(dfa.nodes[1][0]) << std::endl;
 
         // for(int i=0;i<31;i++){
         //     for(auto &node : dfa.nodes[i]){
@@ -136,15 +126,15 @@ void linearDesign(int n, vector<std::string> aa_seq_list){
         //         NumType num;
         //         NucType nuc;
         //         std::tie(index,num,nuc) = node;
-        //         std::cout << index << "," << num << "," << nuc << std::endl;
-        //         for (auto &node_weight : dfa.auxiliary_right_edges[node]){
+        //         std::cout << index << "," << num << "," << GET_ACGU(nuc) << std::endl;
+        //         for (auto &node_weight : dfa.right_edges[node]){
         //             IndexType index_nr;
         //             NumType num_nr;
         //             NucType nuc_nr;
         //             NodeType node_left = node_weight.first;
         //             double weight = node_weight.second;
         //             std::tie(index_nr,num_nr,nuc_nr) = node_left;
-        //             std::cout << index_nr << "," << num_nr << "," << nuc_nr << "," << weight << std::endl;
+        //             std::cout << index_nr << "," << num_nr << "," << GET_ACGU(nuc_nr) << "," << weight << std::endl;
         //         }
         //     std::cout <<  "........."  << std::endl;
         //     }
@@ -165,11 +155,16 @@ int main()
 {
     int n = 1;
     std::vector<std::string> A; 
-    A.push_back("ML*");
+    //A.push_back("ML*");
     //A.push_back("MPNTL*");
+    //A.push_back("MLDQVNKLKYPEVSLT*");
+    //A.push_back("MGAPTLPPAWQPFLKDHRISTFKN"); 
+    //A.push_back("MGAPTLPPAWQPFLKDHRISTFKNWPFLEGCACTPERMAEAGFIHCPTENAKETNNKKKEFEETAEKVRRAIEQLAAMD");
+
+    A.push_back("MGAPTLPPAWQPFLKDHRISTFKNWPFLEGCACTPERMAEAGFIHCPTENEPDLAQCFFCFKELEGWEPDDDPIEEHKKHSSGCAFLSVKKQFEELTLGEFLKLDRERAKNKIAKETNNKKKEFEETAEKVRRAIEQLAAMD");
+
     linearDesign(n, A);
     return 0;
-    
 }
 
 

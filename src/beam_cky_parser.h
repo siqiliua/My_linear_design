@@ -14,7 +14,6 @@
 #include "Utils/flat.h"
 
 
-
 namespace LinearDesign {
 
 namespace detail {
@@ -34,7 +33,7 @@ namespace detail {
 
     struct NodeIndex {
         LINEAR_DESIGN_INLINE size_t operator()(const NodeType& node) const {
-            return (get<0>(node) << 6) | get<1>(node) << 3 | get<2>(node);
+            return (std::get<0>(node) << 6) | (std::get<1>(node) << 3 )| std::get<2>(node);
         }
     };
 
@@ -52,7 +51,7 @@ template <typename IndexType,
           typename DFAType = DFA<IndexType>>
 string get_nuc_from_dfa_cai(DFAType& dfa, const NodeType& start_node, const NodeType& end_node,
         const std::vector<std::string>& protein, std::unordered_map<std::string, std::unordered_map<std::tuple<NodeType, NodeType>, 
-        std::tuple<double, NucType, NucType>, std::hash<std::tuple<NodeType, NodeType>>>>&
+        std::tuple<double, NucType, NucType, NucType>, std::hash<std::tuple<NodeType, NodeType>>>>&
         best_path_in_one_codon_unit, std::unordered_map<std::string, std::string>& aa_best_path_in_a_whole_codon) {
 
     IndexType s_index = std::get<0>(start_node);
@@ -89,7 +88,7 @@ string get_nuc_from_dfa_cai(DFAType& dfa, const NodeType& start_node, const Node
 
             if (t_index % 3 != 0) {
                 auto& nucs = best_path_in_one_codon_unit[aa_right][make_tuple(make_tuple(0, 0, 0), end_node_re_index)];                
-                if (std::get<1>(nucs) != k_void_nuc && std::get<1>(nucs) != 0) 
+                if (GET_ACGU(std::get<1>(nucs)) != 'X') 
                     temp_right.append(1, GET_ACGU(std::get<1>(nucs)));
                 if (std::get<2>(nucs) != k_void_nuc)
                     temp_right.append(1, GET_ACGU(std::get<2>(nucs)));
@@ -101,7 +100,6 @@ string get_nuc_from_dfa_cai(DFAType& dfa, const NodeType& start_node, const Node
         }
 
     } else {
-
         std::string temp_left = "";
         std::string temp_mid = "";
         std::string temp_right = "";
@@ -139,11 +137,10 @@ string get_nuc_from_dfa_cai(DFAType& dfa, const NodeType& start_node, const Node
         }
 
         if (t_index % 3 != 0) {
-            auto& nucs = best_path_in_one_codon_unit[aa_right][make_tuple(make_tuple(0, 0,0), end_node_re_index)];
-            if (std::get<1>(nucs) != k_void_nuc && std::get<1>(nucs) != 0) 
-                temp_right.append(1, GET_ACGU(std::get<1>(nucs)));
-            if (std::get<2>(nucs) != k_void_nuc)
-                temp_right.append(1, GET_ACGU(std::get<2>(nucs)));
+            auto& nucs = best_path_in_one_codon_unit[aa_right][make_tuple(make_tuple(0,0,0), end_node_re_index)];
+            temp_right.append(1, GET_ACGU(std::get<2>(nucs)));
+            if (std::get<3>(nucs) != k_void_nuc)
+                temp_right.append(1, GET_ACGU(std::get<3>(nucs)));
         }
 
         assert((temp_left + temp_mid + temp_right).length() == std::get<0>(end_node) - std::get<0>(start_node));
@@ -176,7 +173,7 @@ public:
         std::vector<std::string>& p, 
         std::unordered_map<std::string, std::string>& aa_best_in_codon,
         std::unordered_map<std::string, std::unordered_map<std::tuple<NodeType, NodeType>, 
-        std::tuple<double, NucType, NucType>, std::hash<std::tuple<NodeType, NodeType>>>>& best_path_in_one_codon,
+        std::tuple<double, NucType, NucType, NucType>, std::hash<std::tuple<NodeType, NodeType>>>>& best_path_in_one_codon,
         std::unordered_map<string, Lattice<IndexType>>& aa_graphs_with_ln_weights);
 
 private:
@@ -203,6 +200,7 @@ private:
         if (state.score + state.cai_score < newscore + cai_score) {
             state.score = newscore;
             state.cai_score = cai_score;
+            double epsilon = 1e-8;
         }
     }
 
@@ -263,7 +261,7 @@ private:
     std::vector<std::string> protein;
     std::unordered_map<std::string, std::string> aa_best_path_in_a_whole_codon;
     std::unordered_map<std::string, 
-                       std::unordered_map<std::tuple<NodeType, NodeType>, std::tuple<FinalScoreType, NucType, NucType>, 
+                       std::unordered_map<std::tuple<NodeType, NodeType>, std::tuple<FinalScoreType, NucType, NucType, NucType>, 
                        std::hash<std::tuple<NodeType, NodeType>>>> best_path_in_one_codon_unit;
 
     Broken_codon_t_CAI get_broken_codon_score_map;

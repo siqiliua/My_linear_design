@@ -21,7 +21,8 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
     bool no_backpointer;
 
     stack<tuple<NodeType, NodeType, State_t, Beam_type, PairType>> stk;
-    NodeType start_node = make_tuple(0, 0, 0);
+    //NodeType start_node = make_tuple(0, 0, 0);
+    NodeType start_node = dfa.nodes[0][0];
     stk.push(make_tuple(start_node, end_node, state, Beam_type::BEAM_C, -1));
 
     double epsilon = 1e-8;
@@ -52,11 +53,10 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                     auto cai_score = c_state.cai_score + weight_nucj_1;
 
                     if (state.score == c_state.score && abs(state.cai_score - cai_score) < epsilon){
+                        //std::cout << "bestC(j)=bestC(j-1)" << j << std::endl;
                         NucType nucj_1 = std::get<2>(j_1_node);
-                        //std::cout << "BEAM_C" << nucj_1 << std::endl;
                         stk.push(make_tuple(i_node, j_1_node, c_state, Beam_type::BEAM_C, curr_pair_nuc));
                         sequence[j-1] = GET_ACGU(nucj_1);
-                        //std::cout << sequence[j-1] << std::endl;
                         no_backpointer = false;
                         break;
                     }
@@ -64,7 +64,6 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
 
                 // C = C + P
                 if(no_backpointer) {
-                    //std::cout << "C = C + P" << std::endl;
                     for (size_t c_node_nucpair_ = 0; c_node_nucpair_ < 64 * seq_length; ++c_node_nucpair_){
                         auto& p_state = bestP[j_node][c_node_nucpair_];
 
@@ -86,6 +85,7 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                             auto cai_score = c_state.cai_score + p_state.cai_score;
 
                             if (state.score == c_state.score + newscore && abs(state.cai_score - cai_score) < epsilon){
+                                //std::cout << "C = C + P , " << j << "," << c << "," << c_num << std::endl;
                                 stk.push(make_tuple(i_node, c_node, c_state, Beam_type::BEAM_C, curr_pair_nuc));
                                 stk.push(make_tuple(c_node, j_node, p_state, Beam_type::BEAM_P, pair_nuc));
                                 no_backpointer = false;
@@ -93,6 +93,7 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                             }
                         } else{
                             if (state.score == newscore && abs(state.cai_score - p_state.cai_score) < epsilon){
+                                //std::cout << "C = C + P, " << j << "," << c << c_num << std::endl;
                                 stk.push(make_tuple(c_node, j_node, p_state, Beam_type::BEAM_P, pair_nuc));
                                 no_backpointer = false;
                                 break;
@@ -117,34 +118,27 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                     auto j_1_node = std::get<0>(j_1_node_nucj_1);
                     NucType new_nucj_1 = std::get<2>(j_1_node);
                     if (new_nucj_1 != nucj_1) continue;
-
                     auto weight_nucj_1 = std::get<1>(j_1_node_nucj_1);
 
+#ifdef SPECIAL_HP
+                    if (hairpin_length == 5 or hairpin_length == 6 or hairpin_length == 8){
+                        for(auto & seq_score_weight : hairpin_seq_score_cai[i_node][j_1_node][NTP(nuci, nucj_1)]){
+                            auto seq =  get<0>(seq_score_weight);
+                            auto pre_cal_score =  get<1>(seq_score_weight);
+                            auto pre_cal_cai_score = get<2>(seq_score_weight);
 
-
-// #ifdef SPECIAL_HP
-//                     if (hairpin_length == 5 or hairpin_length == 6 or hairpin_length == 8){
-//                         for(auto & seq_score_weight : hairpin_seq_score_cai[i_node][j_1_node][NTP(nuci, nucj_1)]){
-//                             auto seq =  get<0>(seq_score_weight);
-//                             auto pre_cal_score =  get<1>(seq_score_weight);
-//                             auto pre_cal_cai_score = get<2>(seq_score_weight);
-
-
-//                             if (state.score == pre_cal_score && abs(state.cai_score - pre_cal_cai_score) < epsilon){
-//                                 for(int c=0; c<seq.size(); c++)
-//                                     sequence[i+c] = seq[c];
-
-//                                 structure[i] = '(';
-//                                 structure[j-1] = ')';
-
-//                                 no_backpointer = false;
-//                                 break;
-//                             }
-//                         }if (!no_backpointer) break;
-//                     }if (!no_backpointer) break;
-// #endif
-
-
+                            if (state.score == pre_cal_score && abs(state.cai_score - pre_cal_cai_score) < epsilon){
+                                //std::cout << "specialhp ," << i << "," << j << std::endl;
+                                for(int c=0; c<seq.size(); c++)
+                                    sequence[i+c] = seq[c];
+                                structure[i] = '(';
+                                structure[j-1] = ')';
+                                no_backpointer = false;
+                                break;
+                            }
+                        }if (!no_backpointer) break;
+                    }if (!no_backpointer) break;
+#endif
 
                     for (auto& i1_node_nuci : dfa.right_edges[i_node]){
                         NucType new_nuci = std::get<2>(i_node);
@@ -158,20 +152,26 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                             NucType nucj_2 = std::get<2>(j_2_node);
 
                             for (auto& i2_node_nuci1 : dfa.right_edges[i1_node]){
-                                NucType nuci1 = std::get<1>(i1_node);
+                                NucType nuci1 = std::get<2>(i1_node);
                                 auto pair_nuc = NTP(nuci1, nucj_2);
 
                                 NodeNucpair temp = {std::get<0>(i1_node), std::get<1>(i1_node), static_cast<NucPairType>(pair_nuc)};
 
                                 auto& p_state = bestP[j_1_node][temp];
+
                                 auto newscore = - func14(i, j-1, i+1, j-2,
                                                                     nuci, nuci1, nucj_2, nucj_1,
-                                                                    nuci, nuci1, nucj_2, nucj_1)
-                                                        + p_state.score;
-
+                                                                    nuci, nuci1, nucj_2, nucj_1)+ p_state.score;
+                                
                                 auto cai_score = p_state.cai_score + (weight_nuci + weight_nucj_1);
-
+                                // std::cout << "stacking--------"  << std::endl;
+                                // std::cout << i << "," << j << std::endl;
+                                // std::cout << i+1 << "," << GET_ACGU(nuci1)  << "," << j-2 << "," << std::get<1>(j_2_node) << "," << GET_ACGU(nucj_2) << std::endl;
+                                // std::cout << "p_state.cai_score ," << p_state.cai_score << "," << "weight_nuci, " << weight_nuci << "," << "weight_nucj_1, " << weight_nucj_1<< std::endl;
+                                // std::cout << "state.cai_score ," << state.cai_score << "," << "cai_score, " << cai_score << std::endl;
+                                // std::cout << "state.score ," << state.score << "," << "newscore, " << newscore << std::endl;
                                 if (state.score == newscore && abs(state.cai_score - cai_score) < epsilon){
+                                    //std::cout << "stacking ," << i << "," << j << std::endl;
                                     stk.push(make_tuple(i1_node, j_1_node, p_state, Beam_type::BEAM_P, pair_nuc));
                                     sequence[i] = GET_ACGU(nuci);
                                     sequence[j-1] = GET_ACGU(nucj_1);
@@ -180,32 +180,26 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
 
                                     no_backpointer = false;
                                     break;
-                                } 
+                                }
                             }if (!no_backpointer) break;
                         }if (!no_backpointer) break;
-                    }
-                    if (!no_backpointer) break;
+                    }if (!no_backpointer) break;
 
                     // hairpin
                     NodeNucpair temp = {std::get<0>(i_node), LinearDesign::NumType(std::get<1>(i_node)), curr_pair_nuc};
-
                     if (state.score == bestH[j_1_node][temp].score){ //no need to check CAI score here
-
                         for (auto& j_2_node_nucj_2 : dfa.left_edges[j_1_node]){
                             auto j_2_node = std::get<0>(j_2_node_nucj_2);
                             auto j_2 = std::get<0>(j_2_node);
                             NucType nucj_2 = std::get<2>(j_2_node);
-
                             auto weight_nucj_2 = std::get<1>(j_2_node_nucj_2);
 
                             for (auto& i1_node_nuci : dfa.right_edges[i_node]){
                                 NucType new_nuci = std::get<2>(i_node);
                                 if (new_nuci != nuci) continue;
-
                                 auto i1_node = std::get<0>(i1_node_nuci);
                                 auto weight_nuci = get<1>(i1_node_nuci);
                                 
-
                                 for(auto& i2_node_nuci1 : dfa.right_edges[i1_node]){
                                     NucType nuci1 = std::get<2>(i1_node);
                                     auto i2_node = std::get<0>(i2_node_nuci1);
@@ -213,34 +207,67 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                                     auto weight_nuci1 = std::get<1>(i2_node_nuci1);
 
                                     //if (j - 1 - i == 4 and (j_2_node.second != i2_node.second and dfa.nodes[i+2].size() == dfa.nodes[j-2].size())) continue;
-                                    for(auto &i3_node_nuci2 : dfa.right_edges[i2_node]){
-                                        auto i3_node = std::get<0>(i3_node_nuci2);
-                                        auto i3_num = std::get<1>(i3_node);
-                                        if(i3_num != std::get<1>(j_2_node))
-                                            continue;
-                                        else{
-                                            auto newscore = - func12(i, j-1, nuci, nuci1, nucj_2, nucj_1, tetra_hex_tri);
-                                            auto cai_score = weight_nuci + weight_nuci1 + get_broken_codon_score(i2_node, j_2_node) + weight_nucj_2 + weight_nucj_1;
+                                    if(j - 1 - i == 4){
+                                        for(auto &i3_node_nuci2 : dfa.right_edges[i2_node]){
+                                            auto i3_node = std::get<0>(i3_node_nuci2);
+                                            auto i3_num = std::get<1>(i3_node);
+                                            if(i3_num != std::get<1>(j_2_node))
+                                                continue;
+                                            else{
+                                                auto newscore = - func12(i, j-1, nuci, nuci1, nucj_2, nucj_1, tetra_hex_tri);
+                                                auto cai_score = weight_nuci + weight_nuci1 + get_broken_codon_score(i2_node, j_2_node) + weight_nucj_2 + weight_nucj_1;
 
-                                            if (state.score == newscore && abs(state.cai_score - cai_score) < epsilon){
-                                                sequence[i] = GET_ACGU(nuci);
-                                                sequence[i+1] = GET_ACGU(nuci1);
-                                                sequence[j-2] = GET_ACGU(nucj_2);
-                                                sequence[j-1] = GET_ACGU(nucj_1);
-                                                structure[i] = '(';
-                                                structure[j-1] = ')';
+                                                // std::cout << "..............."  << std::endl;
+                                                // std::cout << i << "," << j << std::endl;
+                                                // std::cout << "state.cai_score ," << state.cai_score << "," << "cai_score, " << cai_score << std::endl;
+                                                // std::cout << "state.score ," << state.score << "," << "newscore, " << newscore << std::endl;
+                                                if (state.score == newscore && abs(state.cai_score - cai_score) < epsilon){
+                                                    //std::cout << "hairpin , " << i << "," << j << std::endl;
+                                                    sequence[i] = GET_ACGU(nuci);
+                                                    sequence[i+1] = GET_ACGU(nuci1);
+                                                    sequence[j-2] = GET_ACGU(nucj_2);
+                                                    sequence[j-1] = GET_ACGU(nucj_1);
+                                                    structure[i] = '(';
+                                                    structure[j-1] = ')';
 
-                                                auto temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, i2_node, j_2_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
-                                                int count = i2;
-                                                for (auto & nuc : temp_string ){
-                                                    sequence[count] = nuc;
-                                                    count++;
+                                                    auto temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, i2_node, j_2_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
+                                                    int count = i2;
+                                                    for (auto & nuc : temp_string ){
+                                                        sequence[count] = nuc;
+                                                        count++;
+                                                    }
+                                                    assert(count == j_2);
+                                                    no_backpointer = false;
+                                                    break;
                                                 }
-                                                assert(count == j_2);
-
-                                                no_backpointer = false;
-                                                break;
                                             }
+                                        }if(!no_backpointer) break;                       
+                                    }else{
+                                        auto newscore = - func12(i, j-1, nuci, nuci1, nucj_2, nucj_1, tetra_hex_tri);
+                                        auto cai_score = weight_nuci + weight_nuci1 + get_broken_codon_score(i2_node, j_2_node) + weight_nucj_2 + weight_nucj_1;
+
+                                        // std::cout << "..............."  << std::endl;
+                                        // std::cout << i << "," << j << std::endl;
+                                        // std::cout << "state.cai_score ," << state.cai_score << "," << "cai_score, " << cai_score << std::endl;
+                                        // std::cout << "state.score ," << state.score << "," << "newscore, " << newscore << std::endl;
+                                        if (state.score == newscore && abs(state.cai_score - cai_score) < epsilon){
+                                            //std::cout << "hairpin , " << i << "," << j << std::endl;
+                                            sequence[i] = GET_ACGU(nuci);
+                                            sequence[i+1] = GET_ACGU(nuci1);
+                                            sequence[j-2] = GET_ACGU(nucj_2);
+                                            sequence[j-1] = GET_ACGU(nucj_1);
+                                            structure[i] = '(';
+                                            structure[j-1] = ')';
+
+                                            auto temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, i2_node, j_2_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
+                                            int count = i2;
+                                            for (auto & nuc : temp_string ){
+                                                sequence[count] = nuc;
+                                                count++;
+                                            }
+                                            assert(count == j_2);
+                                            no_backpointer = false;
+                                            break;
                                         }
                                     }
                                 }if (!no_backpointer) break;
@@ -408,7 +435,7 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                             if(q_equ_j_1){
                                 for (auto& i1_node_nuci : dfa.right_edges[i_node]){                      
                                     auto i1_node = get<0>(i1_node_nuci);
-                                    NucType new_nuci = get<2>(i1_node);
+                                    NucType new_nuci = get<2>(i_node);
                                     if (new_nuci != nuci) continue;
                                     auto weight_nuci = get<1>(i1_node_nuci);
 
@@ -429,8 +456,15 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                                         auto newscore = - func14(i, j-1, p, q-1, nuci, nucp, nucq_1, nucj_1, nuci, nucp, nucq_1, nucj_1) + p_state.score;
                                         auto weight_left = weight_nuci + get_broken_codon_score(i1_node, p_node);
                                         auto cai_score = p_state.cai_score + (weight_left + weight_nucj_1);
-
+                                        
+                                        // std::cout << "..............."  << std::endl;
+                                        // std::cout << "left bulge , " << std::endl;
+                                        // std::cout << i << "," << j << std::endl;
+                                        // std::cout << p << "," << std::get<1>(p_node) << "," << q << "," << std::get<1>(q_node) << "," << GET_ACGU(nucq_1)<< std::endl;
+                                        // std::cout << "state.cai_score ," << state.cai_score << "," << "cai_score, " << cai_score << std::endl;
+                                        // std::cout << "state.score ," << state.score << "," << "newscore, " << newscore << std::endl;
                                         if (state.score == newscore && abs(state.cai_score - cai_score) < epsilon){
+                                            //std::cout << "left bulge, " << i << "," << j << "," << p << "," << q << std::endl;
                                             stk.push(make_tuple(p_node, q_node, p_state, Beam_type::BEAM_P, pair_nuc));
 
                                             sequence[i] = GET_ACGU(nuci);
@@ -458,7 +492,7 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                             }else{
                                 for (auto& i1_node_nuci : dfa.right_edges[i_node]){
                                     auto i1_node = get<0>(i1_node_nuci);
-                                    NucType new_nuci = get<2>(i1_node);
+                                    NucType new_nuci = get<2>(i_node);
                                     if (new_nuci != nuci) continue;
                                     auto weight_nuci = get<1>(i1_node_nuci);
 
@@ -485,7 +519,14 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
 
                                             auto cai_score = p_state.cai_score + (weight_nuci + weight_right);
 
+                                            // std::cout << "..............."  << std::endl;
+                                            // std::cout << "right bulge , " << std::endl;
+                                            // std::cout << i << "," << j << std::endl;
+                                            // std::cout << p << "," << std::get<1>(p_node) << "," << q << "," << std::get<1>(q_node) << "," << GET_ACGU(nucq_1)<< std::endl;
+                                            // std::cout << "state.cai_score ," << state.cai_score << "," << "cai_score, " << cai_score << std::endl;
+                                            // std::cout << "state.score ," << state.score << "," << "newscore, " << newscore << std::endl;
                                             if (state.score == newscore && abs(state.cai_score - cai_score) < epsilon){
+                                                //std::cout << "right bulge , " << i << "," << j << "," << p << "," << q << std::endl;
                                                 stk.push(make_tuple(p_node, q_node, p_state, Beam_type::BEAM_P, pair_nuc));
 
                                                 sequence[i] = GET_ACGU(nuci);
@@ -513,9 +554,15 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                                             for (auto& i2_node_nuci1 : dfa.right_edges[i1_node]){
                                                 auto i2_node = get<0>(i2_node_nuci1);
                                                 if (p_node != i2_node) continue;
-
+                                                
+                                                //std::cout << "..............."  << std::endl;
                                                 NucType nuci1 = get<2>(i1_node);
                                                 auto weight_nuci1 = get<1>(i2_node_nuci1);
+
+                                                // std::cout << std::get<0>(i1_node) << "," << std::get<1>(i1_node) << "," << GET_ACGU(nuci1) << std::endl;
+                                                // std::cout << "weight_nuci1, " << weight_nuci1 << std::endl;
+                                                // std::cout << std::get<0>(i2_node) << "," << std::get<1>(i2_node) << "," << GET_ACGU(get<2>(i2_node)) << std::endl;
+                                                
                                                 newscore = - func14(i, j-1, p, q-1, nuci, nuci1, nucj_2, nucj_1, nuci1, nucp, nucq_1, nucq) 
                                                                 + p_state.score;
      
@@ -523,8 +570,17 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                                                 weight_right = weight_nucq + get_broken_codon_score(right_start_node, right_end_node) + weight_nucj_2 + weight_nucj_1;
 
                                                 auto cai_score = p_state.cai_score + (weight_left + weight_right);
-
+                                                
+                                                // std::cout << "..............."  << std::endl;
+                                                // std::cout << "p == i+2 , " << std::endl;
+                                                // std::cout << i << "," << j << std::endl;
+                                                // std::cout << p << "," << std::get<1>(p_node) << "," << q << "," << std::get<1>(q_node) << "," << GET_ACGU(nucq_1)<< std::endl;
+                                                // std::cout << "p_state.cai_score ," << p_state.cai_score << "," << "weight_nuci, " << weight_nuci << "," << "weight_nuci1, " << weight_nuci1 << std::endl;
+                                                // std::cout << "get_broken_codon_score," << get_broken_codon_score(right_start_node, right_end_node) << "," << "weight_nucq, " << weight_nucq << ", weight_nucj_2, " << weight_nucj_2 << ", weight_nucj_1, " << weight_nucj_1 << std::endl;
+                                                // std::cout << "state.cai_score ," << state.cai_score << "," << "cai_score, " << cai_score << std::endl;
+                                                // std::cout << "state.score ," << state.score << "," << "newscore, " << newscore << std::endl;
                                                 if (state.score == newscore && abs(state.cai_score - cai_score) < epsilon){
+                                                    //std::cout << "internal loop , " << i << "," << j << "," << p << "," << q << std::endl;
                                                     stk.push(make_tuple(p_node, q_node, p_state, Beam_type::BEAM_P, pair_nuc));
 
                                                     sequence[i] = GET_ACGU(nuci);
@@ -567,7 +623,14 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
 
                                                     auto cai_score = p_state.cai_score + (weight_left + weight_right);
 
+                                                    // std::cout << "..............."  << std::endl;
+                                                    // std::cout << "p == i+3 , " << std::endl;
+                                                    // std::cout << i << "," << j << std::endl;
+                                                    // std::cout << p << "," << std::get<1>(p_node) << "," << q << "," << std::get<1>(q_node) << "," << GET_ACGU(nucq_1)<< std::endl;
+                                                    // std::cout << "state.cai_score ," << state.cai_score << "," << "cai_score, " << cai_score << std::endl;
+                                                    // std::cout << "state.score ," << state.score << "," << "newscore, " << newscore << std::endl;
                                                     if (state.score == newscore && abs(state.cai_score - cai_score) < epsilon){
+                                                        //std::cout << "internal loop , " << i << "," << j << "," << p << "," << q << std::endl;
                                                         stk.push(make_tuple(p_node, q_node, p_state, Beam_type::BEAM_P, pair_nuc));
                                                         
                                                         sequence[i] = GET_ACGU(nuci);
@@ -617,7 +680,14 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
 
                                                         auto cai_score = p_state.cai_score + (weight_left + weight_right);
 
+                                                        // std::cout << "..............."  << std::endl;
+                                                        // std::cout << "p == i+4 , " << std::endl;
+                                                        // std::cout << i << "," << j << std::endl;
+                                                        // std::cout << p << "," << std::get<1>(p_node) << "," << q << "," << std::get<1>(q_node) << "," << GET_ACGU(nucq_1)<< std::endl;
+                                                        // std::cout << "state.cai_score ," << state.cai_score << "," << "cai_score, " << cai_score << std::endl;
+                                                        // std::cout << "state.score ," << state.score << "," << "newscore, " << newscore << std::endl;
                                                         if (state.score == newscore && abs(state.cai_score - cai_score) < epsilon){
+                                                            //std::cout << "internal loop , " << i << "," << j << "," << p << "," << q << std::endl;
                                                             stk.push(make_tuple(p_node, q_node, p_state, Beam_type::BEAM_P, pair_nuc));
 
                                                             sequence[i] = GET_ACGU(nuci);
@@ -664,7 +734,15 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                                                     weight_right = weight_nucq + get_broken_codon_score(right_start_node,right_end_node) + weight_nucj_2 + weight_nucj_1;
 
                                                     auto cai_score = p_state.cai_score + (weight_left + weight_right);
+                                                    
+                                                    // std::cout << "..............."  << std::endl;
+                                                    // std::cout << "p >4 , " << std::endl;
+                                                    // std::cout << i << "," << j << std::endl;
+                                                    // std::cout << p << "," << std::get<1>(p_node) << "," << q << "," << std::get<1>(q_node) << "," << GET_ACGU(nucq_1)<< std::endl;
+                                                    // std::cout << "state.cai_score ," << state.cai_score << "," << "cai_score, " << cai_score << std::endl;
+                                                    // std::cout << "state.score ," << state.score << "," << "newscore, " << newscore << std::endl;
                                                     if (state.score == newscore && abs(state.cai_score - cai_score) < epsilon){
+                                                        //std::cout << "internal loop , " << i << "," << j << "," << p << "," << q << std::endl;
                                                         stk.push(make_tuple(p_node, q_node, p_state, Beam_type::BEAM_P, pair_nuc));
 
                                                         sequence[i] = GET_ACGU(nuci);
@@ -709,9 +787,7 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                 
                 // Multi
                 if (no_backpointer){
-
                     NodeNucpair temp = {std::get<0>(i_node), std::get<1>(i_node), static_cast<NucPairType>(curr_pair_nuc)};
-
 
                     auto& multi_state = bestMulti[j_node][temp];
                     auto newscore = multi_state.score - func15(i, j, nuci, -1, -1, nucj_1, seq_length);
@@ -727,12 +803,11 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                         no_backpointer = false;
                     }
                 }
-
                 assert(no_backpointer == false);
                 break;
 
             case Beam_type::BEAM_MULTI:
-                std::cout << "BEAM_MULTI" << std::endl;
+                //std::cout << "BEAM_MULTI" << std::endl;
                 nuci = PTLN(curr_pair_nuc);
                 nucj_1 = PTRN(curr_pair_nuc);
                 j = std::get<0>(j_node);
@@ -766,7 +841,6 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                                     if(p <= i) continue;
 
                                     for (auto& i1_node_nuci : dfa.right_edges[i_node]){
-
                                         auto i1_node = get<0>(i1_node_nuci);
 
                                         if(p == i + 1 and p_node != i1_node) continue;
@@ -785,6 +859,7 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                                                     auto cai_score = m2_state.cai_score + (weight_nuci + get_broken_codon_score(i1_node, p_node) + get_broken_codon_score(q_node, j_1_node) + weight_nucj_1);
 
                                                     if (state.score == m2_state.score && abs(state.cai_score - cai_score) < epsilon){
+                                                        //std::cout << "multi loop , " << i << "," << j << "," << p << "," << q << std::endl;
                                                         stk.push(make_tuple(p_node, q_node, m2_state, Beam_type::BEAM_M2, -1));
 
                                                         auto temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, i1_node, p_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
@@ -808,153 +883,144 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                                                         no_backpointer = false;
                                                     }if (!no_backpointer) break;
                                                 }
-                                            }
-                                            if (!no_backpointer) break;
-                                            else continue;
-                                        }
-                                        
+                                            }if (!no_backpointer) break;
+                                        }else{
+                                            double weight_nuci = double(get<1>(i1_node_nuci));
+                                            auto& m2_state = bestM2[q_node][p_node];
+                                            auto cai_score = m2_state.cai_score + (weight_nuci + get_broken_codon_score(i1_node, p_node) + get_broken_codon_score(q_node, j_1_node) + weight_nucj_1);
 
-                                        double weight_nuci = double(get<1>(i1_node_nuci));
+                                            if (state.score == m2_state.score && abs(state.cai_score - cai_score) < epsilon){
+                                                //std::cout << "multi loop , " << i << "," << j << "," << p << "," << q << std::endl;
+                                                stk.push(make_tuple(p_node, q_node, m2_state, Beam_type::BEAM_M2, -1));
 
-                                        auto& m2_state = bestM2[q_node][p_node];
+                                                auto temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, i1_node, p_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
+                                                auto count = i+1;
+                                                for (auto & nuc : temp_string ){
+                                                    sequence[count] = nuc;
+                                                    count++;
+                                                }
+                                                assert(count == p);
 
-                                        auto cai_score = m2_state.cai_score + (weight_nuci + get_broken_codon_score(i1_node, p_node) + get_broken_codon_score(q_node, j_1_node) + weight_nucj_1);
+                                                temp_string.clear();
+                                                temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, q_node, j_1_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
+                                                count = q;
+                                                for (auto & nuc : temp_string ){
+                                                    sequence[count] = nuc;
+                                                    count++;
+                                                }
 
-                                        if (state.score == m2_state.score && abs(state.cai_score - cai_score) < epsilon){
-                                            stk.push(make_tuple(p_node, q_node, m2_state, Beam_type::BEAM_M2, -1));
+                                                assert(count == j-1);
+                                                no_backpointer = false;
 
-                                            auto temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, i1_node, p_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
-                                            auto count = i+1;
-                                            for (auto & nuc : temp_string ){
-                                                sequence[count] = nuc;
-                                                count++;
-                                            }
-                                            assert(count == p);
-
-                                            temp_string.clear();
-                                            temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, q_node, j_1_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
-                                            count = q;
-                                            for (auto & nuc : temp_string ){
-                                                sequence[count] = nuc;
-                                                count++;
-                                            }
-
-                                            assert(count == j-1);
-                                            
-                                            no_backpointer = false;
-                                        }if (!no_backpointer) break;
+                                            }if (!no_backpointer) break;
+                                        }  
                                     }if (!no_backpointer) break;
                                 }if (!no_backpointer) break;
                             }
-                        }
-                        if (!no_backpointer) break;
-                        else continue;
-                    }
-                    
-                    
-                    for (size_t p_node_ = 0; p_node_ < 64 * q; ++p_node_) {
+                        }if (!no_backpointer) break; 
+                    }else{
+                        for (size_t p_node_ = 0; p_node_ < 64 * q; ++p_node_) {
+                            auto& temp_state = bestM2[q_node][p_node_];
+                            if (temp_state.score == util::value_min<ScoreType>())
+                                continue;
 
-                        auto& temp_state = bestM2[q_node][p_node_];
-                        if (temp_state.score == util::value_min<ScoreType>())
-                            continue;
+                            auto p_node_nuc = reverse_index(p_node_);
+                            NodeType p_node = make_tuple(p_node_nuc.node_first, p_node_nuc.node_second, p_node_nuc.nucpair);
+                            auto p = std::get<0>(p_node);
 
-                        auto p_node_nuc = reverse_index(p_node_);
-                        NodeType p_node = make_tuple(p_node_nuc.node_first, p_node_nuc.node_second, p_node_nuc.nucpair);
-                        auto p = std::get<0>(p_node);
+                            if(p <= i) continue;
 
-                        if(p <= i) continue;
+                            for (auto& i1_node_nuci : dfa.right_edges[i_node]){
 
-                        for (auto& i1_node_nuci : dfa.right_edges[i_node]){
+                                auto i1_node = get<0>(i1_node_nuci);
 
-                            auto i1_node = get<0>(i1_node_nuci);
+                                if(p == i + 1 and p_node != i1_node) continue;
+                                //if(p == i + 2 and dfa.nodes[p].size() == dfa.nodes[i+1].size() and p_node.second != i1_node.second) continue;
+                                if(p == i + 2){
+                                    for(auto &p_1_node_nucp : dfa.left_edges[p_node]){
+                                        auto p_1_node = std::get<0>(p_1_node_nucp);
+                                        auto p_1_num = std::get<1>(p_1_node);
+                                        if(p_1_num != std::get<1>(i1_node))
+                                            continue;
+                                        else{
+                                            double weight_nuci = double(get<1>(i1_node_nuci));
 
-                            if(p == i + 1 and p_node != i1_node) continue;
-                            //if(p == i + 2 and dfa.nodes[p].size() == dfa.nodes[i+1].size() and p_node.second != i1_node.second) continue;
-                            if(p == i + 2){
-                                for(auto &p_1_node_nucp : dfa.left_edges[p_node]){
-                                    auto p_1_node = std::get<0>(p_1_node_nucp);
-                                    auto p_1_num = std::get<1>(p_1_node);
-                                    if(p_1_num != std::get<1>(i1_node))
-                                        continue;
-                                    else{
-                                        double weight_nuci = double(get<1>(i1_node_nuci));
+                                            auto& m2_state = bestM2[q_node][p_node];
 
-                                        auto& m2_state = bestM2[q_node][p_node];
+                                            auto cai_score = m2_state.cai_score + (weight_nuci + get_broken_codon_score(i1_node, p_node) + get_broken_codon_score(q_node, j_1_node) + weight_nucj_1);
 
-                                        auto cai_score = m2_state.cai_score + (weight_nuci + get_broken_codon_score(i1_node, p_node) + get_broken_codon_score(q_node, j_1_node) + weight_nucj_1);
+                                            if (state.score == m2_state.score && abs(state.cai_score - cai_score) < epsilon){
+                                                //std::cout << "multi loop , " << i << "," << j << "," << p << "," << q << std::endl;
+                                                stk.push(make_tuple(p_node, q_node, m2_state, Beam_type::BEAM_M2, -1));
 
-                                        if (state.score == m2_state.score && abs(state.cai_score - cai_score) < epsilon){
-                                            stk.push(make_tuple(p_node, q_node, m2_state, Beam_type::BEAM_M2, -1));
+                                                auto temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, i1_node, p_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
+                                                auto count = i+1;
+                                                for (auto & nuc : temp_string ){
+                                                    sequence[count] = nuc;
+                                                    count++;
+                                                }
+                                                assert(count == p);
 
-                                            auto temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, i1_node, p_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
-                                            auto count = i+1;
-                                            for (auto & nuc : temp_string ){
-                                                sequence[count] = nuc;
-                                                count++;
-                                            }
-                                            assert(count == p);
+                                                temp_string.clear();
+                                                temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, q_node, j_1_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
+                                                count = q;
+                                                for (auto & nuc : temp_string ){
+                                                    sequence[count] = nuc;
+                                                    count++;
+                                                }
 
-                                            temp_string.clear();
-                                            temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, q_node, j_1_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
-                                            count = q;
-                                            for (auto & nuc : temp_string ){
-                                                sequence[count] = nuc;
-                                                count++;
-                                            }
+                                                assert(count == j-1);
+                                                
+                                                no_backpointer = false;
+                                            }if (!no_backpointer) break;
+                                        }
+                                    }if (!no_backpointer) break;
+                                }else{
+                                    double weight_nuci = double(get<1>(i1_node_nuci));
 
-                                            assert(count == j-1);
-                                            
-                                            no_backpointer = false;
-                                        }if (!no_backpointer) break;
-                                    }
+                                    auto& m2_state = bestM2[q_node][p_node];
+
+                                    auto cai_score = m2_state.cai_score + (weight_nuci + get_broken_codon_score(i1_node, p_node) + get_broken_codon_score(q_node, j_1_node) + weight_nucj_1);
+
+                                    if (state.score == m2_state.score && abs(state.cai_score - cai_score) < epsilon){
+                                        //std::cout << "multi loop , " << i << "," << j << "," << p << "," << q << std::endl;
+                                        stk.push(make_tuple(p_node, q_node, m2_state, Beam_type::BEAM_M2, -1));
+
+                                        auto temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, i1_node, p_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
+                                        auto count = i+1;
+                                        for (auto & nuc : temp_string ){
+                                            sequence[count] = nuc;
+                                            count++;
+                                        }
+                                        assert(count == p);
+
+                                        temp_string.clear();
+                                        temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, q_node, j_1_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
+                                        count = q;
+                                        for (auto & nuc : temp_string ){
+                                            sequence[count] = nuc;
+                                            count++;
+                                        }
+
+                                        assert(count == j-1);
+                                        no_backpointer = false;
+
+                                    }if (!no_backpointer) break;
                                 }
-                                if (!no_backpointer) break;
-                                else continue;
-                            }
-                            
-                            double weight_nuci = double(get<1>(i1_node_nuci));
-
-                            auto& m2_state = bestM2[q_node][p_node];
-
-                            auto cai_score = m2_state.cai_score + (weight_nuci + get_broken_codon_score(i1_node, p_node) + get_broken_codon_score(q_node, j_1_node) + weight_nucj_1);
-
-                            if (state.score == m2_state.score && abs(state.cai_score - cai_score) < epsilon){
-                                stk.push(make_tuple(p_node, q_node, m2_state, Beam_type::BEAM_M2, -1));
-
-                                auto temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, i1_node, p_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
-                                auto count = i+1;
-                                for (auto & nuc : temp_string ){
-                                    sequence[count] = nuc;
-                                    count++;
-                                }
-                                assert(count == p);
-
-                                temp_string.clear();
-                                temp_string = get_nuc_from_dfa_cai<IndexType>(dfa, q_node, j_1_node, protein, best_path_in_one_codon_unit, aa_best_path_in_a_whole_codon);
-                                count = q;
-                                for (auto & nuc : temp_string ){
-                                    sequence[count] = nuc;
-                                    count++;
-                                }
-
-                                assert(count == j-1);
-                                
-                                no_backpointer = false;
                             }if (!no_backpointer) break;
                         }if (!no_backpointer) break;
-                    }if (!no_backpointer) break;
+                    }
                 }
                 assert(no_backpointer == false);
                 break;
 
             case Beam_type::BEAM_M2:
-                std::cout << "BEAM_M2" << std::endl;
+                //std::cout << "BEAM_M2" << std::endl;
                 // M2 = M + P
                 i = std::get<0>(i_node);
                 j = std::get<0>(j_node);
 
                 for (size_t m_node_nucpair_ = 0; m_node_nucpair_ < 64 * j; ++m_node_nucpair_){
-                
                     auto& p_state = bestP[j_node][m_node_nucpair_];
                     if (p_state.score == util::value_min<ScoreType>())
                         continue;
@@ -964,17 +1030,19 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                     auto m_num = m_node_nucpair.node_second;
                     auto pair_nuc = m_node_nucpair.nucpair;
                     auto nucm = PTLN(pair_nuc);
+                    auto nucj_1 = PTRN(pair_nuc);
 
                     auto m_node = make_tuple(m, m_num, nucm);
 
                     if (m <= i+4) continue; // no sharpturn
-                    auto nucj_1 = PTRN(pair_nuc); 
+                     
                     auto newscore = - func6(-1, -1, -1, -1, nucm, nucj_1, -1, seq_length) + p_state.score;
 
                     auto& m_state = bestM[m_node][i_node];
                     auto cai_score = m_state.cai_score + p_state.cai_score;
 
                     if (state.score == m_state.score + newscore && state.cai_score == cai_score){
+                        //std::cout << "M2 = M + P, " << i << "," << j << "," << m << std::endl;
                         stk.push(make_tuple(i_node, m_node, m_state, Beam_type::BEAM_M1, -1));
                         stk.push(make_tuple(m_node, j_node, p_state, Beam_type::BEAM_P, pair_nuc));
 
@@ -987,15 +1055,16 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                 break;
 
             case Beam_type::BEAM_M1:
-                std::cout << "BEAM_M1" << std::endl;
+                //std::cout << "BEAM_M1" << std::endl;
                 // M = M + U
                 for (auto& j_1_node_nucj_1 : dfa.left_edges[j_node]){
                     auto j_1_node = std::get<0>(j_1_node_nucj_1);
                     auto weight_nucj_1 = std::get<1>(j_1_node_nucj_1);
                     auto& m_state = bestM[j_1_node][i_node];
                     auto cai_score = m_state.cai_score + weight_nucj_1;
-
+                    //std::cout << "M(i,j) = M(i,j-1), " << i << "," << j << std::endl;
                     if (state.score == m_state.score && abs(state.cai_score - cai_score) < epsilon) {
+                       
                         NucType nucj_1 = std::get<2>(j_1_node);
                         stk.push(make_tuple(i_node, j_1_node, m_state, Beam_type::BEAM_M1, -1));
 
@@ -1022,6 +1091,7 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                             auto newscore = - func6(-1, -1, -1, -1, nuci, nucj_1, -1, seq_length) + p_state.score;
 
                             if (state.score == newscore && abs(state.cai_score - p_state.cai_score) < epsilon) {
+                                //std::cout << "M = P, " << i << "," << j << std::endl;
                                 stk.push(make_tuple(i_node, j_node, p_state, Beam_type::BEAM_P, pair_nuc));
                                 no_backpointer = false;
                                 break;
@@ -1036,6 +1106,7 @@ BacktraceResult BeamCKYParser<ScoreType, IndexType, NodeType>::backtrace(DFA_t& 
                     auto& m2_state = bestM2[j_node][i_node];
 
                     if (state.score == m2_state.score && state.cai_score == m2_state.cai_score) {
+                        //std::cout << "M = M2, " << i << "," << j << std::endl;
                         stk.push(make_tuple(i_node, j_node, m2_state, Beam_type::BEAM_M2, -1));
                         no_backpointer = false;
                     }
