@@ -59,8 +59,8 @@ enum class Beam_type : std::uint8_t {
 
 template <typename ScoreType>
 struct State {
-    ScoreType score = util::value_min<ScoreType>();
-    double cai_score = util::value_min<double>();
+    ScoreType score; //= util::value_min<ScoreType>();
+    double cai_score; //= util::value_min<double>();
     NodeType pre_node;
     double pre_left_cai;
 };

@@ -6,7 +6,7 @@
 
 #include "base.h"
 
-namespace detail {
+namespace detail{
     template <class Key>
     struct DefaultIndex {
         inline size_t operator()(const Key key) const {

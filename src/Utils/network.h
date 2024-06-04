@@ -45,11 +45,7 @@ public:
 
     void add_node(NodeType n1){
         IndexType pos = get<0>(n1);
-        NumType num = get<1>(n1);
-        NucType nuc = get<2>(n1);
         nodes[pos].push_back(n1);
-
-        //std::cout << pos << "," << num << "," << nuc << std::endl;
 
     }
 };
@@ -200,7 +196,6 @@ unordered_map<string, LatticeType> read_wheel_with_weights(const std::string& fi
     for (string line; getline(inFile, line);) {
         stuff = split(line, '\t');
         aa = stuff[0];
-        //std::cout << aa << std::endl;
         LatticeType graph = LatticeType();
         graph.add_node(make_tuple(0,0,0)); // always initialize with node (0,0)
 
@@ -213,22 +208,15 @@ unordered_map<string, LatticeType> read_wheel_with_weights(const std::string& fi
             string option = *iter;
             option_splited = split(option, ' ');
             char first = option_splited[0][0];
-            //std::cout << first << std::endl;
             char second = option_splited[1][0];
-            //std::cout << second << std::endl;
             string thirds = option_splited[2];
-            //std::cout << thirds << std::endl;
 
             NodeType n2 = make_tuple(2, i, GET_ACGU_NUC(second));
-            //NucType nuc2 = std::get<2>(n2);
-            //std::cout << nuc2 << std::endl;
             graph.add_node(n2);    
 
             NodeType n1;
             if (first != last_first) {
                 n1 = make_tuple(1, i, GET_ACGU_NUC(first));
-                //NucType nuc1 = std::get<2>(n1);
-                //std::cout << nuc1 << std::endl;
                 graph.add_node(n1);
                 double weight = 0.0f;
                 graph.add_edge(make_tuple(0, 0, 0), n1, weight);
@@ -248,8 +236,6 @@ unordered_map<string, LatticeType> read_wheel_with_weights(const std::string& fi
             for (auto& third : thirds) {
                 NodeType n3;
                 n3 = make_tuple(3, j, GET_ACGU_NUC(third));
-                //NucType nuc3 = std::get<2>(n3);
-                //std::cout << nuc3 << std::endl;
                 graph.add_node(n3);
                 double weight2 = 0.0f;
                 if (nodes_with_best_weight[aa].count(n1)) {
@@ -270,17 +256,6 @@ unordered_map<string, LatticeType> read_wheel_with_weights(const std::string& fi
             i++; iter++;
         }
         aa_graphs[aa] = graph;
-
-        // for(int k=0;k<4;k++){
-        //     for(auto &node : graph.nodes[k]){
-        //         IndexType index1;
-        //         NumType num1;
-        //         NucType nuc1;
-        //         std::tie(index1,num1,nuc1) = node;
-        //         std::cout << index1 << "," << num1 << "," << nuc1 << std::endl;
-        //     }
-        // }
-
     }
 
     inFile.close();
@@ -370,26 +345,6 @@ unordered_map<string, LatticeType> read_wheel_with_weights_log(const std::string
             i++; iter++;
         }
         aa_graphs[aa] = graph;
-
-        // for(int k=0;k<4;k++){
-        //     for(auto &node : graph.nodes[k]){
-        //         IndexType index1;
-        //         NumType num1;
-        //         NucType nuc1;
-        //         std::tie(index1,num1,nuc1) = node;
-        //         std::cout << index1 << "," << num1 << "," << nuc1 << std::endl;
-        //         for (auto &node_weight : graph.left_edges[node]){
-        //             IndexType index_nr;
-        //             NumType num_nr;
-        //             NucType nuc_nr;
-        //             NodeType node_right = std::get<0>(node_weight);
-        //             double weight = std::get<1>(node_weight);
-        //             std::tie(index_nr,num_nr,nuc_nr) = node_right;
-        //             std::cout << index_nr << "," << num_nr << "," << nuc_nr << "," << weight << std::endl;               
-        //         }
-        //      std::cout <<  "........."  << std::endl;
-        //     }
-        // }
     }
     inFile.close();
     return aa_graphs;
@@ -403,7 +358,7 @@ template <typename IndexType,
           typename LatticeType = Lattice<IndexType>>
 void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codon,
         std::unordered_map<string, LatticeType>& aa_graphs_with_ln_weights_ret,
-        std::unordered_map<std::string, std::unordered_map<std::tuple<NodeType, NodeType>, std::tuple<double, NucType, NucType>, std::hash<std::tuple<NodeType, NodeType>>>>&
+        std::unordered_map<std::string, std::unordered_map<std::tuple<NodeType, NodeType>, std::tuple<double, NucType, NucType, NucType>, std::hash<std::tuple<NodeType, NodeType>>>>&
                 best_path_in_one_codon_unit_ret,
         std::unordered_map<std::string, std::string>& aa_best_path_in_a_whole_codon_ret, double lambda_) {
 
@@ -413,26 +368,6 @@ void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codo
     std::unordered_map<std::string, LatticeType> aa_graphs_with_ln_weights;
     std::unordered_map<std::string, LatticeType> aa_graphs_with_weights = read_wheel_with_weights<IndexType>(wheel_path, nodes_with_best_weight, edges_with_best_weight, codon);
     
-    // for(int k=0;k<4;k++){
-    //     for(auto &node : aa_graphs_with_weights["Leu"].nodes[k]){
-    //         IndexType index1;
-    //         NumType num1;
-    //         NucType nuc1;
-    //         std::tie(index1,num1,nuc1) = node;
-    //         std::cout << index1 << "," << num1 << "," << nuc1 << std::endl;
-    //         for (auto &node_weight : aa_graphs_with_weights["Leu"].left_edges[node]){
-    //             IndexType index_nr;
-    //             NumType num_nr;
-    //             NucType nuc_nr;
-    //             NodeType node_right = std::get<0>(node_weight);
-    //             double weight = std::get<1>(node_weight);
-    //             std::tie(index_nr,num_nr,nuc_nr) = node_right;
-    //             std::cout << index_nr << "," << num_nr << "," << nuc_nr << "," << weight << std::endl;               
-    //         }
-    //         std::cout <<  "........."  << std::endl;
-    //     }
-    // }
-
     for (auto& aa_aa_elem : aa_graphs_with_weights) {
         auto& aa = aa_aa_elem.first;
         auto& aa_elem = aa_aa_elem.second;
@@ -449,6 +384,11 @@ void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codo
             for (auto& node_at_3_nuc_weight : aa_elem.right_edges[node_at_2]) {
                 auto node_at_3 = std::get<0>(node_at_3_nuc_weight);
                 nodes_with_best_weight[aa][node_at_2] = max(nodes_with_best_weight[aa][node_at_2], nodes_with_best_weight[aa][node_at_3]);
+                //edges_with_best_weight[aa][make_tuple(node_at_2, node_at_3)] = max(nodes_with_best_weight[aa][node_at_2], nodes_with_best_weight[aa][node_at_3]);
+            }
+            for (auto& node_at_3_nuc_weight : aa_elem.right_edges[node_at_2]) {
+                auto node_at_3 = std::get<0>(node_at_3_nuc_weight);
+                //nodes_with_best_weight[aa][node_at_2] = max(nodes_with_best_weight[aa][node_at_2], nodes_with_best_weight[aa][node_at_3]);
                 edges_with_best_weight[aa][make_tuple(node_at_2, node_at_3)] = nodes_with_best_weight[aa][node_at_2];
             }
         }
@@ -457,15 +397,22 @@ void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codo
             for (auto& node_at_2_nuc_weight : aa_elem.right_edges[node_at_1]) {
                 auto node_at_2 = std::get<0>(node_at_2_nuc_weight);
                 nodes_with_best_weight[aa][node_at_1] = max(nodes_with_best_weight[aa][node_at_1], nodes_with_best_weight[aa][node_at_2]);
+                }
+            for (auto& node_at_2_nuc_weight : aa_elem.right_edges[node_at_1]) {
+                auto node_at_2 = std::get<0>(node_at_2_nuc_weight);
                 edges_with_best_weight[aa][make_tuple(node_at_1,node_at_2)] = nodes_with_best_weight[aa][node_at_1];
             }
+            
         }
 
         for (auto& node_at_0 : aa_elem.nodes[0]) {
             for (auto& node_at_1_nuc_weight : aa_elem.right_edges[node_at_0]) {
                 auto node_at_1 = std::get<0>(node_at_1_nuc_weight);
                 nodes_with_best_weight[aa][node_at_0] = max(nodes_with_best_weight[aa][node_at_0], nodes_with_best_weight[aa][node_at_1]);
-                edges_with_best_weight[aa][make_tuple(node_at_0,node_at_1)] = nodes_with_best_weight[aa][node_at_0];
+                }
+            for (auto& node_at_1_nuc_weight : aa_elem.right_edges[node_at_0]) {
+                auto node_at_1 = std::get<0>(node_at_1_nuc_weight);
+                edges_with_best_weight[aa][make_tuple(node_at_0,node_at_1)] = nodes_with_best_weight[aa][node_at_0] ;
             }
         }
     }
@@ -473,20 +420,20 @@ void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codo
     aa_graphs_with_ln_weights = read_wheel_with_weights_log<IndexType>(wheel_path,  nodes_with_best_weight, edges_with_best_weight, codon, lambda_);
 
     // for(int k=0;k<4;k++){
-    //     for(auto &node : aa_graphs_with_ln_weights["Leu"].nodes[k]){
+    //     for(auto &node : aa_graphs_with_ln_weights["Thr"].nodes[k]){
     //         IndexType index1;
     //         NumType num1;
     //         NucType nuc1;
     //         std::tie(index1,num1,nuc1) = node;
-    //         std::cout << index1 << "," << num1 << "," << nuc1 << std::endl;
-    //         for (auto &node_weight : aa_graphs_with_ln_weights["Leu"].left_edges[node]){
+    //         for (auto &node_weight : aa_graphs_with_ln_weights["Thr"].right_edges[node]){
     //             IndexType index_nr;
     //             NumType num_nr;
     //             NucType nuc_nr;
     //             NodeType node_right = std::get<0>(node_weight);
     //             double weight = std::get<1>(node_weight);
     //             std::tie(index_nr,num_nr,nuc_nr) = node_right;
-    //             std::cout << index_nr << "," << num_nr << "," << nuc_nr << "," << weight << std::endl;               
+    //             std::cout << index1 << "," << num1 << "," << GET_ACGU(nuc1) << "," << weight << std::endl;
+    //             std::cout << index_nr << "," << num_nr << "," << GET_ACGU(nuc_nr)  << std::endl;               
     //         }
     //         std::cout <<  "........."  << std::endl;
     //     }
@@ -494,7 +441,7 @@ void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codo
 
     std::unordered_map<std::string, 
                        std::unordered_map<std::tuple<NodeType, NodeType>, 
-                       std::tuple<double, NucType, NucType>,
+                       std::tuple<double, NucType, NucType,NucType>,
                        std::hash<std::tuple<NodeType, NodeType>>>>
                        best_path_in_one_codon_unit;
 
@@ -509,11 +456,11 @@ void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codo
                 //std::cout <<  nuc << std::endl;
 
                 if (!best_path_in_one_codon_unit[aa].count(make_tuple(node_0,node_1)))
-                    best_path_in_one_codon_unit[aa][make_tuple(node_0,node_1)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc);
+                    best_path_in_one_codon_unit[aa][make_tuple(node_0,node_1)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc,k_void_nuc);
 
                 double current_log_weight = std::get<0>(best_path_in_one_codon_unit[aa][make_tuple(node_0,node_1)]);
                 if (current_log_weight < log_weight) {
-                    best_path_in_one_codon_unit[aa][make_tuple(node_0,node_1)] = make_tuple(log_weight,nuc,k_void_nuc);
+                    best_path_in_one_codon_unit[aa][make_tuple(node_0,node_1)] = make_tuple(log_weight,nuc,k_void_nuc,k_void_nuc);
                 }
             }
         }
@@ -526,11 +473,11 @@ void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codo
                 //std::cout << nuc << std::endl;
 
                 if (!best_path_in_one_codon_unit[aa].count(make_tuple(node_1,node_2)))
-                    best_path_in_one_codon_unit[aa][make_tuple(node_1,node_2)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc);
+                    best_path_in_one_codon_unit[aa][make_tuple(node_1,node_2)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc,k_void_nuc);
 
                 double current_log_weight = std::get<0>(best_path_in_one_codon_unit[aa][make_tuple(node_1,node_2)]);
                 if (current_log_weight < log_weight) {
-                    best_path_in_one_codon_unit[aa][make_tuple(node_1,node_2)] = make_tuple(log_weight,nuc,k_void_nuc);
+                    best_path_in_one_codon_unit[aa][make_tuple(node_1,node_2)] = make_tuple(log_weight,nuc,k_void_nuc,k_void_nuc);
                 }
 
                 auto temp = best_path_in_one_codon_unit[aa][make_tuple(node_1,node_2)];
@@ -544,11 +491,11 @@ void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codo
                 auto nuc = std::get<2>(node_2);
 
                 if (!best_path_in_one_codon_unit[aa].count(make_tuple(node_2,node_3)))
-                    best_path_in_one_codon_unit[aa][make_tuple(node_2,node_3)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc);
+                    best_path_in_one_codon_unit[aa][make_tuple(node_2,node_3)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc,k_void_nuc);
 
                 double current_log_weight = std::get<0>(best_path_in_one_codon_unit[aa][make_tuple(node_2,node_3)]);
                 if (current_log_weight < log_weight) {
-                    best_path_in_one_codon_unit[aa][make_tuple(node_2,node_3)] = make_tuple(log_weight,nuc,k_void_nuc);
+                    best_path_in_one_codon_unit[aa][make_tuple(node_2,node_3)] = make_tuple(log_weight,nuc, k_void_nuc ,k_void_nuc);
                 }
             }
         }
@@ -560,11 +507,11 @@ void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codo
                 auto nuc = std::get<2>(node_3);
 
                 if (!best_path_in_one_codon_unit[aa].count(make_tuple(node_3,node_4)))
-                    best_path_in_one_codon_unit[aa][make_tuple(node_3,node_4)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc);
+                    best_path_in_one_codon_unit[aa][make_tuple(node_3,node_4)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc,k_void_nuc);
 
                 double current_log_weight = std::get<0>(best_path_in_one_codon_unit[aa][make_tuple(node_3,node_4)]);
                 if (current_log_weight < log_weight) {
-                    best_path_in_one_codon_unit[aa][make_tuple(node_3,node_4)] = make_tuple(log_weight,nuc,k_void_nuc);
+                    best_path_in_one_codon_unit[aa][make_tuple(node_3,node_4)] = make_tuple(log_weight,nuc,k_void_nuc,k_void_nuc);
                 }
             }
         }
@@ -581,10 +528,10 @@ void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codo
                     auto& nuc_1 = std::get<2>(node_1);
 
                     if (!best_path_in_one_codon_unit[aa].count(make_tuple(node_0,node_2)))
-                        best_path_in_one_codon_unit[aa][make_tuple(node_0,node_2)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc);
+                        best_path_in_one_codon_unit[aa][make_tuple(node_0,node_2)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc,k_void_nuc);
 
                     if (std::get<0>(best_path_in_one_codon_unit[aa][make_tuple(node_0,node_2)]) < log_weight_0 + log_weight_1)
-                        best_path_in_one_codon_unit[aa][make_tuple(node_0,node_2)] = make_tuple(log_weight_0 + log_weight_1, nuc_0, nuc_1);
+                        best_path_in_one_codon_unit[aa][make_tuple(node_0,node_2)] = make_tuple(log_weight_0 + log_weight_1, nuc_0, nuc_1,k_void_nuc);
                 }
             }
         }
@@ -600,10 +547,10 @@ void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codo
                     auto& nuc_2 = std::get<2>(node_2);
 
                     if (!best_path_in_one_codon_unit[aa].count(make_tuple(node_1,node_3)))
-                        best_path_in_one_codon_unit[aa][make_tuple(node_1,node_3)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc);
+                        best_path_in_one_codon_unit[aa][make_tuple(node_1,node_3)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc,k_void_nuc);
 
                     if (std::get<0>(best_path_in_one_codon_unit[aa][make_tuple(node_1,node_3)]) < log_weight_1 + log_weight_2)
-                        best_path_in_one_codon_unit[aa][make_tuple(node_1,node_3)] = make_tuple(log_weight_1 + log_weight_2, nuc_1, nuc_2);
+                        best_path_in_one_codon_unit[aa][make_tuple(node_1,node_3)] = make_tuple(log_weight_1 + log_weight_2, nuc_1, nuc_2,k_void_nuc);
                 }
             }
         }
@@ -619,10 +566,10 @@ void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codo
                     auto& nuc_3 = std::get<2>(node_3);
 
                     if (!best_path_in_one_codon_unit[aa].count(make_tuple(node_2,node_4)))
-                        best_path_in_one_codon_unit[aa][make_tuple(node_2,node_4)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc);
+                        best_path_in_one_codon_unit[aa][make_tuple(node_2,node_4)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc,k_void_nuc);
 
                     if (std::get<0>(best_path_in_one_codon_unit[aa][make_tuple(node_2,node_4)]) < log_weight_2 + log_weight_3)
-                        best_path_in_one_codon_unit[aa][make_tuple(node_2,node_4)] = make_tuple(log_weight_2 + log_weight_3, nuc_2, nuc_3);
+                        best_path_in_one_codon_unit[aa][make_tuple(node_2,node_4)] = make_tuple(log_weight_2 + log_weight_3, nuc_2, nuc_3,k_void_nuc);
                 }
             }
         }
@@ -642,10 +589,10 @@ void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codo
                         auto& nuc_2 = std::get<2>(node_2);
 
                         if (!best_path_in_one_codon_unit[aa].count(make_tuple(node_0,node_3)))
-                            best_path_in_one_codon_unit[aa][make_tuple(node_0,node_3)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc);
+                            best_path_in_one_codon_unit[aa][make_tuple(node_0,node_3)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc,k_void_nuc);
 
                         if (std::get<0>(best_path_in_one_codon_unit[aa][make_tuple(node_0,node_3)]) < log_weight_0 + log_weight_1 + log_weight_2)
-                            best_path_in_one_codon_unit[aa][make_tuple(node_0,node_3)] = make_tuple(log_weight_0 + log_weight_1+log_weight_2, nuc_0, nuc_2);
+                            best_path_in_one_codon_unit[aa][make_tuple(node_0,node_3)] = make_tuple(log_weight_0 + log_weight_1+log_weight_2, nuc_0, nuc_1, nuc_2);
                     }
                 }
             }
@@ -666,16 +613,112 @@ void prepare_codon_unit_lattice(const std::string& wheel_path, const Codon& codo
                         auto& nuc_3 = std::get<2>(node_3);
 
                         if (!best_path_in_one_codon_unit[aa].count(make_tuple(node_1,node_4)))
-                            best_path_in_one_codon_unit[aa][make_tuple(node_1,node_4)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc);
+                            best_path_in_one_codon_unit[aa][make_tuple(node_1,node_4)] = make_tuple(util::value_min<double>(),k_void_nuc,k_void_nuc,k_void_nuc);
 
                         if (std::get<0>(best_path_in_one_codon_unit[aa][make_tuple(node_1,node_4)]) < log_weight_1 + log_weight_2 + log_weight_3)
-                            best_path_in_one_codon_unit[aa][make_tuple(node_1,node_4)] = make_tuple(log_weight_1+log_weight_2+log_weight_3, nuc_1, nuc_3);
+                            best_path_in_one_codon_unit[aa][make_tuple(node_1,node_4)] = make_tuple(log_weight_1+log_weight_2+log_weight_3, nuc_1, nuc_2, nuc_3);
                     }
                 }
             }
         }
-
     }
+
+    // for(int k=0;k<4;k++){
+    //     for(auto &node : aa_graphs_with_ln_weights["Leu"].nodes[k]){
+    //         IndexType index0;
+    //         NumType num0;
+    //         NucType nuc0;
+    //         std::tie(index0,num0,nuc0) = node;
+    //         for (auto &node_weight : aa_graphs_with_ln_weights["Leu"].right_edges[node]){
+    //             IndexType index_nr;
+    //             NumType num_nr;
+    //             NucType nuc_nr;
+    //             NodeType node_right = std::get<0>(node_weight);
+    //             std::tie(index_nr,num_nr,nuc_nr) = node_right;
+    //             std::cout << index0 << "," << num0 << "," << GET_ACGU(nuc0) << std::endl;
+    //             std::cout << index_nr << "," << num_nr << "," << GET_ACGU(nuc_nr)  << std::endl;
+    //             double weight;
+    //             NucType nuc1;
+    //             NucType nuc2;
+    //             NucType nuc3;
+    //             std::tie(weight,nuc1,nuc2,nuc3) = best_path_in_one_codon_unit["Leu"][make_tuple(node,node_right)];
+    //             std::cout << weight << ","<<  GET_ACGU(nuc1) << ","<<  GET_ACGU(nuc2) << ","<<  GET_ACGU(nuc3) << std::endl;
+    //             std::cout <<  ".............."  << std::endl;
+    //         }            
+    //     }
+    // }
+
+    // std::cout <<  "2................................."  << std::endl;
+
+    // for(int k=0;k<3;k++){
+    //     for(auto &node : aa_graphs_with_ln_weights["Leu"].nodes[k]){
+    //         IndexType index0;
+    //         NumType num0;
+    //         NucType nuc0;
+    //         std::tie(index0,num0,nuc0) = node;
+    //         std::cout << index0 << "," << num0 << "," << GET_ACGU(nuc0) << std::endl;
+    //         for (auto &node_weight : aa_graphs_with_ln_weights["Leu"].right_edges[node]){
+    //             // IndexType index_nr;
+    //             // NumType num_nr;
+    //             // NucType nuc_nr;
+    //             NodeType node_right = std::get<0>(node_weight);
+    //             // std::tie(index_nr,num_nr,nuc_nr) = node_right;
+    //             // std::cout << index_nr << "," << num_nr << "," << GET_ACGU(nuc_nr)  << std::endl;
+    //             for (auto &node_weight2 : aa_graphs_with_ln_weights["Leu"].right_edges[node_right]){
+    //                 IndexType index_2;
+    //                 NumType num_2;
+    //                 NucType nuc_2;
+    //                 NodeType node2 = std::get<0>(node_weight2);
+    //                 std::tie(index_2,num_2,nuc_2) = node2;
+    //                 std::cout << index_2 << "," << num_2 << "," << GET_ACGU(nuc_2)  << std::endl;              
+    //                 double weight;
+    //                 NucType nuc1;
+    //                 NucType nuc2;
+    //                 NucType nuc3;
+    //                 std::tie(weight,nuc1,nuc2,nuc3) = best_path_in_one_codon_unit["Leu"][make_tuple(node,node2)];
+    //                 std::cout << weight << ","<<  GET_ACGU(nuc1) << ","<<  GET_ACGU(nuc2) << ","<<  GET_ACGU(nuc3) << std::endl;
+    //                 std::cout <<  ".............."  << std::endl;
+    //             }
+    //         }
+    //     }
+    //     std::cout <<  ".............."  << std::endl;
+    // }
+
+    // std::cout <<  "3................................."  << std::endl;
+
+    // for(int k=0;k<2;k++){
+    //     for(auto &node : aa_graphs_with_ln_weights["Leu"].nodes[k]){
+    //         IndexType index0;
+    //         NumType num0;
+    //         NucType nuc0;
+    //         std::tie(index0,num0,nuc0) = node;
+    //         std::cout << index0 << "," << num0 << "," << GET_ACGU(nuc0) << std::endl;
+    //         for (auto &node_weight1 : aa_graphs_with_ln_weights["Leu"].right_edges[node]){
+    //             NodeType node1 = std::get<0>(node_weight1);
+    //             for (auto &node_weight2 : aa_graphs_with_ln_weights["Leu"].right_edges[node1]){
+    //                 NodeType node2 = std::get<0>(node_weight2);
+    //                 for (auto &node_weight3 : aa_graphs_with_ln_weights["Leu"].right_edges[node2]){
+    //                     IndexType index_3;
+    //                     NumType num_3;
+    //                     NucType nuc_3;
+    //                     NodeType node3 = std::get<0>(node_weight3);
+    //                     std::tie(index_3,num_3,nuc_3) = node3;
+    //                     std::cout << index_3 << "," << num_3 << "," << GET_ACGU(nuc_3)  << std::endl;                
+    //                     double weight;
+    //                     NucType nuc1;
+    //                     NucType nuc2;
+    //                     NucType nuc3;
+    //                     std::tie(weight,nuc1,nuc2,nuc3) = best_path_in_one_codon_unit["Leu"][make_tuple(node,node3)];
+    //                     std::cout << weight << ","<<  GET_ACGU(nuc1) << ","<<  GET_ACGU(nuc2) << ","<<  GET_ACGU(nuc3) << std::endl;
+    //                     std::cout <<  ".............."  << std::endl;
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     std::cout <<  ".............."  << std::endl;
+    // }
+
+
 
     std::unordered_map<std::string, double> max_path;
     std::unordered_map<std::string, std::string> aa_best_path_in_a_whole_codon;
